@@ -27,6 +27,7 @@ if [ "$DISTRO" = "alpine" ]; then
   sed -i 's/dl-cdn.alpinelinux.org/mirrors.tuna.tsinghua.edu.cn/g' /etc/apk/repositories
   apk update
 else
+  apt update
   apt install apt-transport-https ca-certificates -y
   if [ -f "/etc/apt/sources.list.d/debian.sources" ]; then
     sed -i 's/deb.debian.org/mirrors.ustc.edu.cn/g' /etc/apt/sources.list.d/debian.sources
@@ -38,7 +39,7 @@ else
     sed -i 's/http:/https:/g' /etc/apt/sources.list
     #sed -i 's/security.debian.org/mirrors.cloud.tencent.com/g' /etc/apt/sources.list
   fi
-  apt update -y
+  apt update
 fi
 
 echo "registry=https://registry.npmmirror.com" > ~/.npmrc

@@ -69,13 +69,13 @@ fi
 
 # Install dependencies
 log "Installing dependencies"
-runcmd apt-get update
+runcmd apt update
 export DEBIAN_FRONTEND=noninteractive
-runcmd 'apt-get install -y --no-install-recommends $DEVDEPS gnupg openssl ca-certificates apache2-utils logrotate'
+runcmd 'apt install -y --no-install-recommends $DEVDEPS gnupg openssl ca-certificates apache2-utils logrotate'
 
 # Install Python
 log "Installing python"
-runcmd apt-get install -y -q --no-install-recommends python3 python3-distutils python3-venv
+runcmd apt install -y -q --no-install-recommends python3 python3-distutils python3-venv
 python3 -m venv /opt/certbot/
 export PATH=/opt/certbot/bin:$PATH
 grep -qo "/opt/certbot" /etc/environment || echo "$PATH" > /etc/environment
@@ -95,7 +95,7 @@ if [ $DISTRO_ID = "ubuntu" ]; then
 else
   echo "deb [trusted=yes] http://openresty.org/package/$DISTRO_ID ${_distro_release:-bullseye} openresty" | tee /etc/apt/sources.list.d/openresty.list
 fi
-runcmd apt-get update && apt-get install -y -q --no-install-recommends openresty
+runcmd apt install -y -q --no-install-recommends openresty
 
 # Install nodejs
 log "Installing nodejs"
