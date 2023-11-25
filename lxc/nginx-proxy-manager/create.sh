@@ -181,6 +181,7 @@ _pct_options=(
   -storage $_storage
   -swap $_swap
   -tags npm
+  -timezone host
 )
 pct create $_ctid "$_storage_template:vztmpl/$_template" ${_pct_options[@]} &>/dev/null \
   || error "A problem occured while creating LXC container."
