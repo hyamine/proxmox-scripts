@@ -35,7 +35,7 @@ else
   if [ -f "/etc/apt/sources.list.d/debian.sources" ]; then
     sed -i 's/deb.debian.org/mirrors.ustc.edu.cn/g' /etc/apt/sources.list.d/debian.sources
     sed -i 's|security.debian.org|mirrors.ustc.edu.cn/debian-security|g' /etc/apt/sources.list.d/debian.sources
-    sudo sed -i 's/http:/https:/g' /etc/apt/sources.list.d/debian.sources
+    sed -i 's/http:/https:/g' /etc/apt/sources.list.d/debian.sources
   else
     sed -i 's/deb.debian.org/mirrors.ustc.edu.cn/g' /etc/apt/sources.list
     sed -i 's|security.debian.org|mirrors.ustc.edu.cn/debian-security|g' /etc/apt/sources.list

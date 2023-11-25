@@ -99,7 +99,7 @@ runcmd apt install -y -q --no-install-recommends openresty
 
 # Install nodejs
 log "Installing nodejs"
-wget -qO - https://deb.nodesource.com/gpgkey/nodesource.gpg.key | sudo apt-key add -
+wget -qO - https://deb.nodesource.com/gpgkey/nodesource.gpg.key | apt-key add -
 runcmd wget -qO - https://deb.nodesource.com/setup_16.x | bash -
 runcmd apt install -y -q --no-install-recommends nodejs npm
 runcmd npm install --global yarn
