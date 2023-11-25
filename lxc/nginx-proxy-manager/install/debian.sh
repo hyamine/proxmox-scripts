@@ -44,9 +44,9 @@ trapexit() {
   fi
   
   # Cleanup
-  apt-get remove --purge -y $DEVDEPS -qq &>/dev/null
-  apt-get autoremove -y -qq &>/dev/null
-  apt-get clean
+  apt remove --purge -y $DEVDEPS -qq &>/dev/null
+  apt autoremove -y -qq &>/dev/null
+  apt clean
   rm -rf $TEMPDIR
   rm -rf /root/.cache
 }
