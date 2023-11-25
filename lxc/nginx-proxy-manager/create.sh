@@ -2,6 +2,8 @@
 
 set -Eeuo pipefail
 
+CURRENT_SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" &> /dev/null && pwd)
+
 trap error ERR
 trap 'popd >/dev/null; rm -rf $_temp_dir;' EXIT
 
@@ -194,7 +196,7 @@ pct start $_ctid
 sleep 5
 
 DISTRO=$(pct exec $_ctid -- sh -c "cat /etc/*-release | grep -w ID | cut -d= -f2 | tr -d '\"'")
-pct push $_ctid ./setup.sh /tmp/npm_setup.sh
-pct push $_ctid ./install/${DISTRO}.sh /tmp/${DISTRO}_npm_install.sh
+pct push $_ctid ${CURRENT_SCRIPT_DIR}/setup.sh /tmp/npm_setup.sh
+pct push $_ctid ${CURRENT_SCRIPT_DIR}/install/${DISTRO}.sh /tmp/${DISTRO}_npm_install.sh
 pct exec $_ctid -- sh /tmp/npm_setup.sh /tmp/${DISTRO}_npm_install.sh
 #pct exec $_ctid -- sh -c "wget --no-cache -qO - $_raw_base/setup.sh | sh"
