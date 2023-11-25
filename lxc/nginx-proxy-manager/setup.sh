@@ -19,7 +19,7 @@ else
   INSTALL_SCRIPT="/tmp/${DISTRO}_npm_install.sh"
   wget -O ${INSTALL_SCRIPT} https://fastly.jsdelivr.net/gh/hyamine/proxmox-scripts@main/lxc/nginx-proxy-manager/install/$DISTRO.sh
 fi
-if [ "$DISTRO" != "alpine" ]
+if [ "$DISTRO" != "alpine" ]; then
   sed -i 's/dl-cdn.alpinelinux.org/mirrors.tuna.tsinghua.edu.cn/g' /etc/apk/repositories
 else
   sudo sed -i 's/deb.debian.org/mirrors.ustc.edu.cn/g' /etc/apt/sources.list
