@@ -33,8 +33,8 @@ function error {
 # Base raw github URL
 _raw_base="https://raw.githubusercontent.com/ej52/proxmox-scripts/main/lxc/nginx-proxy-manager"
 # Operating system
-_os_type=alpine
-_os_version=3.16
+_os_type=debian
+_os_version=12
 # System architecture
 _arch=$(dpkg --print-architecture)
 
@@ -191,5 +191,10 @@ EOF
 # Setup container
 info "Setting up LXC container..."
 pct start $_ctid
-sleep 3
-pct exec $_ctid -- sh -c "wget --no-cache -qO - $_raw_base/setup.sh | sh"
+sleep 5
+
+DISTRO=$(pct exec $_ctid -- sh -c "cat /etc/*-release | grep -w ID | cut -d= -f2 | tr -d '\"'")
+pct push $_ctid ./setup.sh /tmp/npm_setup.sh
+pct push $_ctid ./install/${DISTRO}.sh /tmp/${DISTRO}_npm_install.sh
+pct exec $_ctid -- sh /tmp/npm_setup.sh /tmp/${DISTRO}_npm_install.sh
+#pct exec $_ctid -- sh -c "wget --no-cache -qO - $_raw_base/setup.sh | sh"
