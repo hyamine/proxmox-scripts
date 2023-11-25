@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-set -euo pipefail
+set -vxeuo pipefail
 trap trapexit EXIT SIGTERM
 
 DISTRO_ID=$(cat /etc/*-release | grep -w ID | cut -d= -f2 | tr -d '"')
@@ -78,7 +78,7 @@ log "Installing python"
 runcmd apt install -y -q --no-install-recommends python3 python3-distutils python3-venv
 python3 -m venv /opt/certbot/
 export PATH=/opt/certbot/bin:$PATH
-grep -qo "/opt/certbot" /etc/environment || echo "$PATH" > /etc/environment
+grep -qo "/opt/certbot" /etc/environment || echo "PATH=$PATH" >> /etc/environment
 # Install certbot and python dependancies
 runcmd wget -qO - https://bootstrap.pypa.io/get-pip.py | python -
 if [ "$(getconf LONG_BIT)" = "32" ]; then
