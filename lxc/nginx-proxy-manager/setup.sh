@@ -21,6 +21,9 @@ else
 fi
 
 ln -sf /usr/share/zoneinfo/Asia/Shanghai /etc/localtime
+export LC_ALL=en_US.UTF-8
+export TZ=Asia/Shanghai
+echo "LC_ALL=en_US.UTF-8" >> /etc/environment
 echo "TZ=Asia/Shanghai" >> /etc/environment
 
 if [ "$DISTRO" = "alpine" ]; then
