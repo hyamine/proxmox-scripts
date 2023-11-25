@@ -19,11 +19,21 @@ else
   INSTALL_SCRIPT="/tmp/${DISTRO}_npm_install.sh"
   wget -O ${INSTALL_SCRIPT} https://fastly.jsdelivr.net/gh/hyamine/proxmox-scripts@main/lxc/nginx-proxy-manager/install/$DISTRO.sh
 fi
-if [ "$DISTRO" == "alpine" ]; then
+if [ "$DISTRO" = "alpine" ]; then
   sed -i 's/dl-cdn.alpinelinux.org/mirrors.tuna.tsinghua.edu.cn/g' /etc/apk/repositories
   apk update
 else
-  sudo sed -i 's/deb.debian.org/mirrors.ustc.edu.cn/g' /etc/apt/sources.list
+  #apt install apt-transport-https ca-certificates -y
+  if [ -f "/etc/apt/sources.list.d/debian.sources" ]; then
+    sed -i 's/deb.debian.org/mirrors.ustc.edu.cn/g' /etc/apt/sources.list.d/debian.sources
+    sed -i 's|security.debian.org/debian-security|mirrors.ustc.edu.cn/debian-security|g' /etc/apt/sources.list.d/debian.sources
+    sudo sed -i 's/http:/https:/g' /etc/apt/sources.list.d/debian.sources
+  else
+    sed -i 's/deb.debian.org/mirrors.ustc.edu.cn/g' /etc/apt/sources.list
+    sed -i 's|security.debian.org/debian-security|mirrors.ustc.edu.cn/debian-security|g' /etc/apt/sources.list
+    sed -i 's/http:/https:/g' /etc/apt/sources.list
+    sed -i 's/security.debian.org/mirrors.cloud.tencent.com/g' /etc/apt/sources.list
+  fi
   apt update -y
 fi
 
