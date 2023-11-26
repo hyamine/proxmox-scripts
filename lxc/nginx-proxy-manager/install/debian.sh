@@ -2,7 +2,7 @@
 
 set -eux
 set -o pipefail
-trap trapexit EXIT SIGTERM
+#trap trapexit EXIT SIGTERM
 
 DISTRO_ID=$(cat /etc/*-release | grep -w ID | cut -d= -f2 | tr -d '"')
 DISTRO_CODENAME=$(cat /etc/*-release | grep -w VERSION_CODENAME | cut -d= -f2 | tr -d '"')
@@ -25,6 +25,8 @@ log() {
 }
 runcmd() { 
   LASTCMD=$(grep -n "$*" "$0" | sed "s/[[:blank:]]*runcmd//");
+  echo LASTCMD=$LASTCMD
+  echo Command: "$@"
   if [[ "$#" -eq 1 ]]; then
     eval "$@" 2>$TEMPERR;
   else
