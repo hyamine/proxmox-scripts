@@ -16,6 +16,7 @@ LASTCMD=""
 WGETOPT="-t 1 -T 15 -q"
 DEVDEPS="git build-essential libffi-dev libssl-dev python3-dev"
 NPMURL="https://github.com/NginxProxyManager/nginx-proxy-manager"
+export DEBIAN_FRONTEND=noninteractive
 
 cd $TEMPDIR
 touch $TEMPLOG
@@ -49,6 +50,26 @@ trapexit() {
   rm -rf /root/.cache
 }
 
+if [ -f "/etc/apt/sources.list.d/debian.sources" ]; then
+  sed -i 's/deb.debian.org/mirrors.ustc.edu.cn/g' /etc/apt/sources.list.d/debian.sources
+  sed -i 's|security.debian.org|mirrors.ustc.edu.cn/debian-security|g' /etc/apt/sources.list.d/debian.sources
+  sed -i 's/http:/https:/g' /etc/apt/sources.list.d/debian.sources
+else
+  sed -i 's/deb.debian.org/mirrors.ustc.edu.cn/g' /etc/apt/sources.list
+  sed -i 's|security.debian.org|mirrors.ustc.edu.cn/debian-security|g' /etc/apt/sources.list
+  sed -i 's/http:/https:/g' /etc/apt/sources.list
+  #sed -i 's/security.debian.org/mirrors.cloud.tencent.com/g' /etc/apt/sources.list
+fi
+
+exit 0
+
+# Install dependencies
+log "Installing dependencies"
+apt update
+apt install apt-transport-https ca-certificates gnupg -y
+apt install -y --no-install-recommends $DEVDEPS gnupg openssl ca-certificates apache2-utils logrotate jq wget
+
+
 # Check for previous install
 if [ -f /lib/systemd/system/npm.service ]; then
   log "Stopping services"
@@ -64,12 +85,6 @@ if [ -f /lib/systemd/system/npm.service ]; then
   /var/lib/nginx \
   /var/cache/nginx &>/dev/null
 fi
-
-# Install dependencies
-log "Installing dependencies"
-apt update
-export DEBIAN_FRONTEND=noninteractive
-apt install -y --no-install-recommends $DEVDEPS gnupg openssl ca-certificates apache2-utils logrotate jq
 
 # Install Python
 log "Installing python"
@@ -93,7 +108,7 @@ pip install --no-cache-dir cffi certbot
 
 # Install openresty
 log "Installing openresty"
-wget -qO - https://openresty.org/package/pubkey.gpg | apt-key add -
+wget -O - https://openresty.org/package/pubkey.gpg | apt-key add -
 _distro_release=$(wget $WGETOPT "http://openresty.org/package/$DISTRO_ID/dists/" -O - | grep -o "$DISTRO_CODENAME" | head -n1 || true)
 if [ $DISTRO_ID = "ubuntu" ]; then
   echo "deb [trusted=yes] http://openresty.org/package/$DISTRO_ID ${_distro_release:-focal} main" | tee /etc/apt/sources.list.d/openresty.list
