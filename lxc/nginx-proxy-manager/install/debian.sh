@@ -3,7 +3,9 @@
 set -eux
 set -o pipefail
 #trap trapexit EXIT SIGTERM
+echo $PATH | grep /usr/local/bin >/dev/null 2>&1 || export PATH=$PATH:/usr/local/bin
 
+alias sget='wget -qO -'
 DISTRO_ID=$(cat /etc/*-release | grep -w ID | cut -d= -f2 | tr -d '"')
 DISTRO_CODENAME=$(cat /etc/*-release | grep -w VERSION_CODENAME | cut -d= -f2 | tr -d '"')
 
@@ -23,17 +25,7 @@ log() {
   logs=$(cat $TEMPLOG | sed -e "s/34/32/g" | sed -e "s/info/success/g");
   clear && printf "\033c\e[3J$logs\n\e[34m[info] $*\e[0m\n" | tee $TEMPLOG;
 }
-runcmd() { 
-  LASTCMD=$(grep -n "$*" "$0" | sed "s/[[:blank:]]*runcmd//");
-  _cur_cmd="$@"
-  echo "LASTCMD=${LASTCMD}"
-  echo "${_cur_cmd}"
-  if [[ "$#" -eq 1 ]]; then
-    eval "${_cur_cmd}" 2>$TEMPERR;
-  else
-    $@ 2>$TEMPERR;
-  fi
-}
+
 trapexit() {
   status=$?
   
@@ -74,24 +66,24 @@ fi
 
 # Install dependencies
 log "Installing dependencies"
-runcmd apt update
+apt update
 export DEBIAN_FRONTEND=noninteractive
-runcmd 'apt install -y --no-install-recommends $DEVDEPS gnupg openssl ca-certificates apache2-utils logrotate'
+apt install -y --no-install-recommends $DEVDEPS gnupg openssl ca-certificates apache2-utils logrotate jq
 
 # Install Python
 log "Installing python"
-runcmd "apt install -y -q --no-install-recommends python3 python3-distutils python3-venv python3-pip"
+apt install -y -q --no-install-recommends python3 python3-distutils python3-venv python3-pip
 python3 -m venv /opt/certbot/
 export PATH=/opt/certbot/bin:$PATH
 source /opt/certbot/bin/activate
 #grep -qo "/opt/certbot" /etc/environment || echo "PATH=$PATH" >> /etc/environment
 grep -qo "/opt/certbot" /etc/profile || echo "source /opt/certbot/bin/activate" >> /etc/profile
 # Install certbot and python dependancies
-#runcmd wget -qO - https://bootstrap.pypa.io/get-pip.py | python -
+#wget -qO - https://bootstrap.pypa.io/get-pip.py | python -
 if [ "$(getconf LONG_BIT)" = "32" ]; then
-  runcmd pip install --no-cache-dir -U cryptography==3.3.2
+pip install --no-cache-dir -U cryptography==3.3.2
 fi
-runcmd pip install --no-cache-dir cffi certbot
+pip install --no-cache-dir cffi certbot
 
 # Install openresty
 log "Installing openresty"
@@ -102,24 +94,29 @@ if [ $DISTRO_ID = "ubuntu" ]; then
 else
   echo "deb [trusted=yes] http://openresty.org/package/$DISTRO_ID ${_distro_release:-bullseye} openresty" | tee /etc/apt/sources.list.d/openresty.list
 fi
-runcmd apt install -y -q --no-install-recommends openresty
+apt install -y -q --no-install-recommends openresty
 
 # Install nodejs
 log "Installing nodejs"
 wget -qO - https://deb.nodesource.com/gpgkey/nodesource.gpg.key | apt-key add -
-runcmd wget -qO - https://deb.nodesource.com/setup_16.x | bash -
-runcmd apt install -y -q --no-install-recommends nodejs npm
-runcmd npm install --global yarn
+wget -qO - https://deb.nodesource.com/setup_16.x | bash -
+apt install -y -q --no-install-recommends nodejs npm gcc g++ make
+npm install --global yarn
 
 # Get latest version information for nginx-proxy-manager
 log "Checking for latest NPM release"
-runcmd 'wget $WGETOPT -O ./_latest_release $NPMURL/releases/latest'
-_latest_version=$(cat ./_latest_release | grep -Po '(?<=expanded_assets/v)[^"]+')
+URL_INFO_API_1="https://api.github.com/repos/NginxProxyManager/nginx-proxy-manager/releases/latest"
+URL_INFO_API_2="https://api.upup.cool/repo/NginxProxyManager/nginx-proxy-manager/info"
+PROXY_MANAGER_INFO="$(sget $URL_INFO_API_1 || sget URL_INFO_API_2)"
+_latest_version=$(echo $PROXY_MANAGER_INFO | jq -r 'if .version then .version else .tag_name end')
 
-# Download nginx-proxy-manager source
-log "Downloading NPM v$_latest_version"
-runcmd 'wget $WGETOPT -c $NPMURL/archive/v$_latest_version.tar.gz -O - | tar -xz'
-cd ./nginx-proxy-manager-$_latest_version
+PROXY_MANAGER_URL_1="https://mirror.ghproxy.com/${NPMURL}/archive/refs/tags/${_latest_version}.tar.gz"
+PROXY_MANAGER_URL_2="https://api.upup.cool/repo/NginxProxyManager/nginx-proxy-manager/source"
+PROXY_MANAGER_URL_3="${NPMURL}/archive/refs/tags/${_latest_version}.tar.gz"
+PROXY_DOWN_FILE="${_latest_version}.tar.gz"
+wget -O ${PROXY_DOWN_FILE} ${PROXY_MANAGER_URL_1} || wget -O ${PROXY_DOWN_FILE} ${PROXY_MANAGER_URL_2} || wget -O ${PROXY_DOWN_FILE} ${PROXY_MANAGER_URL_3}
+tar xzf ${PROXY_DOWN_FILE}
+cd nginx-proxy-manager-*
 
 log "Setting up enviroment"
 # Crate required symbolic links
@@ -177,7 +174,7 @@ echo resolver "$(awk 'BEGIN{ORS=" "} $1=="nameserver" {print ($2 ~ ":")? "["$2"]
 # Generate dummy self-signed certificate.
 if [ ! -f /data/nginx/dummycert.pem ] || [ ! -f /data/nginx/dummykey.pem ]; then
   log "Generating dummy SSL certificate"
-  runcmd 'openssl req -new -newkey rsa:2048 -days 3650 -nodes -x509 -subj "/O=Nginx Proxy Manager/OU=Dummy Certificate/CN=localhost" -keyout /data/nginx/dummykey.pem -out /data/nginx/dummycert.pem'
+  openssl req -new -newkey rsa:2048 -days 3650 -nodes -x509 -subj "/O=Nginx Proxy Manager/OU=Dummy Certificate/CN=localhost" -keyout /data/nginx/dummykey.pem -out /data/nginx/dummycert.pem
 fi
 
 # Copy app files
@@ -189,8 +186,8 @@ cp -r global/* /app/global
 log "Building frontend"
 cd ./frontend
 export NODE_ENV=development
-runcmd yarn install --network-timeout=30000
-runcmd yarn build
+yarn install --network-timeout=30000
+yarn build
 cp -r dist/* /app/frontend
 cp -r app-images/* /app/frontend/images
 
@@ -214,7 +211,7 @@ EOF
 fi
 cd /app
 export NODE_ENV=development
-runcmd yarn install --network-timeout=30000
+yarn install --network-timeout=30000
 
 # Create NPM service
 log "Creating NPM service"
@@ -240,8 +237,8 @@ systemctl enable npm
 
 # Start services
 log "Starting services"
-runcmd systemctl start openresty
-runcmd systemctl start npm
+systemctl start openresty
+systemctl start npm
 
 IP=$(hostname -I | cut -f1 -d ' ')
 log "Installation complete
