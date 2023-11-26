@@ -112,7 +112,10 @@ if [ $DISTRO_ID = "ubuntu" ]; then
 else
   echo "deb [trusted=yes] http://openresty.org/package/$DISTRO_ID ${_distro_release:-bullseye} openresty" | tee /etc/apt/sources.list.d/openresty.list
 fi
+apt update
 apt install -y -q --no-install-recommends openresty
+
+exit 0
 
 # Install nodejs
 log "Installing nodejs"
