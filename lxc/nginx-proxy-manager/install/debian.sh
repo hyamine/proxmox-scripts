@@ -25,10 +25,11 @@ log() {
 }
 runcmd() { 
   LASTCMD=$(grep -n "$*" "$0" | sed "s/[[:blank:]]*runcmd//");
-  echo LASTCMD=$LASTCMD
-  echo Command: "$@"
+  _cur_cmd="$@"
+  echo "LASTCMD=${LASTCMD}"
+  echo "${_cur_cmd}"
   if [[ "$#" -eq 1 ]]; then
-    eval "$@" 2>$TEMPERR;
+    eval "${_cur_cmd}" 2>$TEMPERR;
   else
     $@ 2>$TEMPERR;
   fi
