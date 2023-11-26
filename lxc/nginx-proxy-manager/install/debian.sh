@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
-set -vxeuo pipefail
+
+set -eux
+set -o pipefail
 trap trapexit EXIT SIGTERM
 
 DISTRO_ID=$(cat /etc/*-release | grep -w ID | cut -d= -f2 | tr -d '"')
