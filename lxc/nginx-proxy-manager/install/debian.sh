@@ -74,11 +74,16 @@ apt install -y --no-install-recommends $DEVDEPS gnupg openssl ca-certificates ap
 # Install Python
 log "Installing python"
 apt install -y -q --no-install-recommends python3 python3-distutils python3-venv python3-pip
+
 python3 -m venv /opt/certbot/
-export PATH=/opt/certbot/bin:$PATH
+#export PATH=/opt/certbot/bin:$PATH
 source /opt/certbot/bin/activate
-#grep -qo "/opt/certbot" /etc/environment || echo "PATH=$PATH" >> /etc/environment
-grep -qo "/opt/certbot" /etc/profile || echo "source /opt/certbot/bin/activate" >> /etc/profile
+pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple/
+pip config set install.trusted-host pypi.tuna.tsinghua.edu.cn
+
+grep -qo "/opt/certbot" ~/.bashrc || echo "source /opt/certbot/bin/activate" >> ~/.bashrc
+ln -sf /opt/certbot/bin/activate /etc/profile.d/pyenv_activate.sh
+
 # Install certbot and python dependancies
 #wget -qO - https://bootstrap.pypa.io/get-pip.py | python -
 if [ "$(getconf LONG_BIT)" = "32" ]; then
@@ -103,6 +108,21 @@ wget -qO - https://deb.nodesource.com/gpgkey/nodesource.gpg.key | apt-key add -
 wget -qO - https://deb.nodesource.com/setup_16.x | bash -
 apt install -y -q --no-install-recommends nodejs npm gcc g++ make
 npm install --global yarn
+
+npm config set registry https://registry.npmmirror.com
+#npm config set disturl https://npmmirror.com/dist
+#npm config set electron_mirror https://npmmirror.com/mirrors/electron/
+#npm config set sass_binary_site https://npmmirror.com/mirrors/node-sass/
+#npm config set phantomjs_cdnurl https://npmmirror.com/mirrors/phantomjs/
+
+yarn config set registry https://registry.npmmirror.com -g
+yarn config set disturl https://npmmirror.com/dist -g
+yarn config set electron_mirror https://npmmirror.com/mirrors/electron/ -g
+yarn config set sass_binary_site https://npmmirror.com/mirrors/node-sass/ -g
+yarn config set phantomjs_cdnurl https://npmmirror.com/mirrors/phantomjs/ -g
+yarn config set chromedriver_cdnurl https://cdn.npmmirror.com/dist/chromedriver -g
+yarn config set operadriver_cdnurl https://cdn.npmmirror.com/dist/operadriver -g
+yarn config set fse_binary_host_mirror https://npmmirror.com/mirrors/fsevents -g
 
 # Get latest version information for nginx-proxy-manager
 log "Checking for latest NPM release"

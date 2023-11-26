@@ -45,16 +45,15 @@ else
   apt update
 fi
 
-echo "registry=https://registry.npmmirror.com" > ~/.npmrc
-chmod 0600 ~/.npmrc
-mkdir -p ~/.config/pip/
-chmod 0755 ~/.config/pip/
-echo "[global]" > ~/.config/pip/pip.conf
-echo "index-url = https://pypi.tuna.tsinghua.edu.cn/simple" >> ~/.config/pip/pip.conf
-
-echo 'registry "https://registry.npmmirror.com"' > /usr/local/share/.yarnrc
-echo 'registry "https://registry.npmmirror.com"' > ~/.yarnrc
-chmod 0644 ~/.yarnrc /usr/local/share/.yarnrc ~/.config/pip/pip.conf
+#echo "registry=https://registry.npmmirror.com" > ~/.npmrc
+#chmod 0600 ~/.npmrc
+#mkdir -p ~/.config/pip/
+#chmod 0755 ~/.config/pip/
+#echo "[global]" > ~/.config/pip/pip.conf
+#echo "index-url = https://pypi.tuna.tsinghua.edu.cn/simple" >> ~/.config/pip/pip.conf
+#echo 'registry "https://registry.npmmirror.com"' > /usr/local/share/.yarnrc
+#echo 'registry "https://registry.npmmirror.com"' > ~/.yarnrc
+#chmod 0644 ~/.yarnrc /usr/local/share/.yarnrc ~/.config/pip/pip.conf
 
 if [ "$(command -v bash)" ]; then
   $(command -v sudo) bash "$INSTALL_SCRIPT"
