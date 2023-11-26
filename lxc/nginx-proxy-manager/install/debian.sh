@@ -115,8 +115,6 @@ fi
 apt update
 apt install -y -q --no-install-recommends openresty
 
-exit 0
-
 # Install nodejs
 log "Installing nodejs"
 wget -qO - https://deb.nodesource.com/gpgkey/nodesource.gpg.key | apt-key add -
