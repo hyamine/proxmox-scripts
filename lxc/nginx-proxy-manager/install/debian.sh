@@ -80,7 +80,7 @@ runcmd 'apt install -y --no-install-recommends $DEVDEPS gnupg openssl ca-certifi
 
 # Install Python
 log "Installing python"
-runcmd apt install -y -q --no-install-recommends python3 python3-distutils python3-venv  python3-pip
+runcmd "apt install -y -q --no-install-recommends python3 python3-distutils python3-venv python3-pip"
 python3 -m venv /opt/certbot/
 export PATH=/opt/certbot/bin:$PATH
 source /opt/certbot/bin/activate
