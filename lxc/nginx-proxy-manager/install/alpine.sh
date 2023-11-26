@@ -38,6 +38,9 @@ trapexit() {
   apk del $DEVDEPS &>/dev/null
 }
 
+sed -i 's/dl-cdn.alpinelinux.org/mirrors.tuna.tsinghua.edu.cn/g' /etc/apk/repositories
+apk update
+
 # Check for previous install
 if [ -f /etc/init.d/npm ]; then
   log "Stopping services"

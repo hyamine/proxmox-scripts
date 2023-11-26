@@ -26,13 +26,6 @@ export TZ=Asia/Shanghai
 echo "LC_ALL=en_US.UTF-8" >> /etc/environment
 echo "TZ=Asia/Shanghai" >> /etc/environment
 
-if [ "$DISTRO" = "alpine" ]; then
-  sed -i 's/dl-cdn.alpinelinux.org/mirrors.tuna.tsinghua.edu.cn/g' /etc/apk/repositories
-  apk update
-else
-
-fi
-
 #echo "registry=https://registry.npmmirror.com" > ~/.npmrc
 #chmod 0600 ~/.npmrc
 #mkdir -p ~/.config/pip/
