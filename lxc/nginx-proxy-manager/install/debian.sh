@@ -61,14 +61,11 @@ else
   #sed -i 's/security.debian.org/mirrors.cloud.tencent.com/g' /etc/apt/sources.list
 fi
 
-exit 0
-
 # Install dependencies
 log "Installing dependencies"
 apt update
 apt install apt-transport-https ca-certificates gnupg -y
 apt install -y --no-install-recommends $DEVDEPS gnupg openssl ca-certificates apache2-utils logrotate jq wget
-
 
 # Check for previous install
 if [ -f /lib/systemd/system/npm.service ]; then
