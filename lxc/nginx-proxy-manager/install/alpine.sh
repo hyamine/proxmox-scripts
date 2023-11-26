@@ -16,16 +16,10 @@ touch $TEMPLOG
 # Helpers
 log() {
   logs=$(cat $TEMPLOG | sed -e "s/34/32/g" | sed -e "s/info/success/g");
-  clear && printf "\033c\e[3J$logs\n\e[34m[info] $*\e[0m\n" | tee $TEMPLOG;
+  #clear && printf "\033c\e[3J$logs\n\e[34m[info] $*\e[0m\n" | tee $TEMPLOG;
+  printf "\033c\e[3J$logs\n\e[34m[info] $*\e[0m\n" | tee $TEMPLOG;
 }
-runcmd() {
-  LASTCMD=$(grep -n "$*" "$0" | sed "s/[[:blank:]]*runcmd//");
-  if [[ "$#" -eq 1 ]]; then
-    eval "$@" 2>$TEMPERR;
-  else
-    $@ 2>$TEMPERR;
-  fi
-}
+
 trapexit() {
   status=$?
 
@@ -69,7 +63,7 @@ log "Checking for latest openresty repository"
 _alpine_version=${VERSION_ID%.*}
 # add openresty public key
 if [ ! -f /etc/apk/keys/admin@openresty.com-5ea678a6.rsa.pub ]; then
-  runcmd 'wget $WGETOPT -P /etc/apk/keys/ http://openresty.org/package/admin@openresty.com-5ea678a6.rsa.pub'
+  wget $WGETOPT -P /etc/apk/keys/ http://openresty.org/package/admin@openresty.com-5ea678a6.rsa.pub
 fi
 
 # Get the latest openresty repository
@@ -84,29 +78,29 @@ grep -q 'openresty.org' /etc/apk/repositories &&
 # Update container OS
 log "Updating container OS"
 echo "fs.file-max = 65535" > /etc/sysctl.conf
-runcmd apk update
-runcmd apk upgrade
+apk update
+apk upgrade
 
 # Install dependancies
 log "Installing dependencies"
-runcmd 'apk add python3 openresty nodejs yarn openssl apache2-utils logrotate $DEVDEPS'
+apk add python3 openresty nodejs yarn openssl apache2-utils logrotate $DEVDEPS
 
 # Setup python env and PIP
 log "Setting up python"
 python3 -m venv /opt/certbot/
-runcmd python3 -m ensurepip --upgrade
+python3 -m ensurepip --upgrade
 # Install certbot and python dependancies
-runcmd pip3 install --no-cache-dir -U cryptography==3.3.2
-runcmd pip3 install --no-cache-dir cffi certbot
+pip3 install --no-cache-dir -U cryptography==3.3.2
+pip3 install --no-cache-dir cffi certbot
 
 log "Checking for latest NPM release"
 # Get latest version information for nginx-proxy-manager
-runcmd 'wget $WGETOPT -O ./_latest_release $NPMURL/releases/latest'
+wget $WGETOPT -O ./_latest_release $NPMURL/releases/latest
 _latest_version=$(basename $(cat ./_latest_release | grep -wo "expanded_assets/v.*\d") | cut -d'v' -f2)
 
 # Download nginx-proxy-manager source
 log "Downloading NPM v$_latest_version"
-runcmd 'wget $WGETOPT -c $NPMURL/archive/v$_latest_version.tar.gz -O - | tar -xz'
+wget $WGETOPT -c $NPMURL/archive/v$_latest_version.tar.gz -O - | tar -xz
 cd ./nginx-proxy-manager-$_latest_version
 
 log "Setting up enviroment"
@@ -165,7 +159,7 @@ echo resolver "$(awk 'BEGIN{ORS=" "} $1=="nameserver" {print ($2 ~ ":")? "["$2"]
 # Generate dummy self-signed certificate.
 if [ ! -f /data/nginx/dummycert.pem ] || [ ! -f /data/nginx/dummykey.pem ]; then
   log "Generating dummy SSL certificate"
-  runcmd 'openssl req -new -newkey rsa:2048 -days 3650 -nodes -x509 -subj "/O=Nginx Proxy Manager/OU=Dummy Certificate/CN=localhost" -keyout /data/nginx/dummykey.pem -out /data/nginx/dummycert.pem'
+  openssl req -new -newkey rsa:2048 -days 3650 -nodes -x509 -subj "/O=Nginx Proxy Manager/OU=Dummy Certificate/CN=localhost" -keyout /data/nginx/dummykey.pem -out /data/nginx/dummycert.pem
 fi
 
 # Copy app files
@@ -177,8 +171,8 @@ cp -r global/* /app/global
 log "Building frontend"
 cd ./frontend
 export NODE_ENV=development
-runcmd yarn install
-runcmd yarn build
+yarn install
+yarn build
 cp -r dist/* /app/frontend
 cp -r app-images/* /app/frontend/images
 
@@ -202,7 +196,7 @@ EOF
 fi
 cd /app
 export NODE_ENV=development
-runcmd yarn install
+yarn install
 
 # Create NPM service
 log "Creating NPM service"
@@ -247,8 +241,8 @@ rc-service openresty stop &>/dev/null
 
 # Start services
 log "Starting services"
-runcmd rc-service openresty start
-runcmd rc-service npm start
+rc-service openresty start
+rc-service npm start
 
 IP=$(ip a s dev eth0 | sed -n '/inet / s/\// /p' | awk '{print $2}')
 log "Installation complete

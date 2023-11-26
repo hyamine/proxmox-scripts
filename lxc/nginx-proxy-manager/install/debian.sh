@@ -23,7 +23,8 @@ touch $TEMPLOG
 # Helpers
 log() { 
   logs=$(cat $TEMPLOG | sed -e "s/34/32/g" | sed -e "s/info/success/g");
-  clear && printf "\033c\e[3J$logs\n\e[34m[info] $*\e[0m\n" | tee $TEMPLOG;
+  #clear && printf "\033c\e[3J$logs\n\e[34m[info] $*\e[0m\n" | tee $TEMPLOG;
+  printf "\033c\e[3J$logs\n\e[34m[info] $*\e[0m\n" | tee $TEMPLOG;
 }
 
 trapexit() {
