@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
-set -Eeuo pipefail
+set -Eeux
+set -o pipefail
 
 CURRENT_SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" &> /dev/null && pwd)
 

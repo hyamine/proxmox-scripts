@@ -1,15 +1,19 @@
 #!/usr/bin/env sh
-set -euo pipefail
+
+set -eux
+set -o pipefail
+
 trap trapexit EXIT SIGTERM
 
-TEMPDIR=$(mktemp -d)
+TEMPDIR="$1"
+[ -d "${TEMPDIR}" ] || TEMPDIR=$(mktemp -d)
 TEMPLOG="$TEMPDIR/tmplog"
 TEMPERR="$TEMPDIR/tmperr"
 LASTCMD=""
-WGETOPT="-t 1 -T 15 -q"
+WGETOPT="-t 2 -T 15 -q"
 DEVDEPS="npm g++ make gcc git python3-dev musl-dev libffi-dev openssl-dev"
 NPMURL="https://github.com/NginxProxyManager/nginx-proxy-manager"
-
+source <(cat /etc/os-release | tr -s '\n' | awk '{print "OS_"$0}')
 cd $TEMPDIR
 touch $TEMPLOG
 
@@ -39,7 +43,12 @@ trapexit() {
 }
 
 sed -i 's/dl-cdn.alpinelinux.org/mirrors.tuna.tsinghua.edu.cn/g' /etc/apk/repositories
+# Update container OS
+log "Updating container OS"
+echo "fs.file-max = 65535" > /etc/sysctl.conf
 apk update
+apk upgrade
+adduser npm
 
 # Check for previous install
 if [ -f /etc/init.d/npm ]; then
@@ -61,28 +70,18 @@ if [ -f /etc/init.d/npm ]; then
   apk del certbot $DEVDEPS &>/dev/null
 fi
 
+OPENRESTY_REP_PREFIX="https://mirrors.ustc.edu.cn/openresty"
 log "Checking for latest openresty repository"
-. /etc/os-release
-_alpine_version=${VERSION_ID%.*}
+ALPINE_MAJOR_VER=$(echo $OS_VERSION_ID | sed 's/\.[0-9]\+$//')
 # add openresty public key
 if [ ! -f /etc/apk/keys/admin@openresty.com-5ea678a6.rsa.pub ]; then
-  wget $WGETOPT -P /etc/apk/keys/ http://openresty.org/package/admin@openresty.com-5ea678a6.rsa.pub
+  wget $WGETOPT -P /etc/apk/keys/ $OPENRESTY_REP_PREFIX/admin@openresty.com-5ea678a6.rsa.pub
 fi
-
-# Get the latest openresty repository
-_repository_version=$(wget $WGETOPT "http://openresty.org/package/alpine/" -O - | grep -Eo "[0-9]{1}\.[0-9]{1,2}" | sort -uVr | head -n1)
-_repository_version=$(printf "$_repository_version\n$_alpine_version" | sort -V | head -n1)
-_repository="http://openresty.org/package/alpine/v$_repository_version/main"
-
 # Update/Insert openresty repository
-grep -q 'openresty.org' /etc/apk/repositories &&
-  sed -i "/openresty.org/c\\$_repository/" /etc/apk/repositories || echo $_repository >> /etc/apk/repositories
-
-# Update container OS
-log "Updating container OS"
-echo "fs.file-max = 65535" > /etc/sysctl.conf
+sed -i '/openresty/d' /etc/apk/repositories
+echo "$OPENRESTY_REP_PREFIX/alpine/v$ALPINE_MAJOR_VER/main" \
+    | tee -a /etc/apk/repositories
 apk update
-apk upgrade
 
 # Install dependancies
 log "Installing dependencies"

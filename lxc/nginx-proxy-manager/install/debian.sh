@@ -8,7 +8,8 @@ echo $PATH | grep /usr/local/bin >/dev/null 2>&1 || export PATH=$PATH:/usr/local
 DISTRO_ID=$(cat /etc/*-release | grep -w ID | cut -d= -f2 | tr -d '"')
 DISTRO_CODENAME=$(cat /etc/*-release | grep -w VERSION_CODENAME | cut -d= -f2 | tr -d '"')
 
-TEMPDIR=$(mktemp -d)
+TEMPDIR="$1"
+[ -d "${TEMPDIR}" ] || TEMPDIR=$(mktemp -d)
 TEMPLOG="$TEMPDIR/tmplog"
 TEMPERR="$TEMPDIR/tmperr"
 LASTCMD=""
@@ -63,6 +64,7 @@ fi
 # Install dependencies
 log "Installing dependencies"
 apt update
+apt upgrade -y
 apt install apt-transport-https ca-certificates gnupg -y
 apt install -y --no-install-recommends $DEVDEPS gnupg openssl ca-certificates apache2-utils logrotate jq wget
 
