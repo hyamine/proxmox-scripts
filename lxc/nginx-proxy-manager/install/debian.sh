@@ -5,7 +5,6 @@ set -o pipefail
 #trap trapexit EXIT SIGTERM
 echo $PATH | grep /usr/local/bin >/dev/null 2>&1 || export PATH=$PATH:/usr/local/bin
 
-alias sget='wget -qO -'
 DISTRO_ID=$(cat /etc/*-release | grep -w ID | cut -d= -f2 | tr -d '"')
 DISTRO_CODENAME=$(cat /etc/*-release | grep -w VERSION_CODENAME | cut -d= -f2 | tr -d '"')
 
@@ -152,7 +151,7 @@ yarn config set fse_binary_host_mirror https://npmmirror.com/mirrors/fsevents -g
 log "Checking for latest NPM release"
 URL_INFO_API_1="https://api.github.com/repos/NginxProxyManager/nginx-proxy-manager/releases/latest"
 URL_INFO_API_2="https://api.upup.cool/repo/NginxProxyManager/nginx-proxy-manager/info"
-PROXY_MANAGER_INFO="$(sget $URL_INFO_API_1 || sget URL_INFO_API_2)"
+PROXY_MANAGER_INFO="$(wget -qO - $URL_INFO_API_1 || wget -qO - URL_INFO_API_2)"
 _latest_version=$(echo $PROXY_MANAGER_INFO | jq -r 'if .version then .version else .tag_name end')
 
 PROXY_MANAGER_URL_1="https://mirror.ghproxy.com/${NPMURL}/archive/refs/tags/${_latest_version}.tar.gz"
