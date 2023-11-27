@@ -120,8 +120,10 @@ log "Installing nodejs"
 # shellcheck disable=SC1101
 wget -qO-  https://fastly.jsdelivr.net/gh/nvm-sh/nvm@master/install.sh | \
   sed 's|raw.githubusercontent.com/${NVM_GITHUB_REPO}/${NVM_VERSION}|fastly.jsdelivr.net/gh/${NVM_GITHUB_REPO}@${NVM_VERSION}|g' | \
+  sed 's|NVM_SOURCE_URL="https://github.com|NVM_SOURCE_URL="https://mirror.ghproxy.com/https://github.com|g' | \
   /bin/bash
 nvm install 16
+
 #wget -qO - https://deb.nodesource.com/gpgkey/nodesource.gpg.key | apt-key add -
 #wget -qO - https://deb.nodesource.com/setup_16.x | bash -
 #apt install -y -q --no-install-recommends nodejs npm gcc g++ make
