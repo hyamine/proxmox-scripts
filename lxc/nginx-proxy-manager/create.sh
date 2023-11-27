@@ -49,6 +49,14 @@ while [[ $# -gt 0 ]]; do
   arg="$1"
 
   case $arg in
+    --os)
+      _os_type=$2
+      shift
+      ;;
+    --osversion)
+      _os_version=$2
+      shift
+      ;;
     --id)
       _ctid=$2
       shift
@@ -196,7 +204,7 @@ info "Setting up LXC container..."
 pct start $_ctid
 sleep 5
 
-echo _rootfs=$_rootfs ; _storage=$_storage ; _ctid=$_ctid
+echo "_rootfs=$_rootfs ; _storage=$_storage ; _ctid=$_ctid"
 exit 0
 
 DISTRO=$(pct exec $_ctid -- sh -c "cat /etc/*-release | grep -w ID | cut -d= -f2 | tr -d '\"'")
