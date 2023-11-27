@@ -173,6 +173,7 @@ ln -sf /usr/local/openresty/nginx/ /etc/nginx
 # Update NPM version in package.json files
 sed -i "s+0.0.0+$_latest_version+g" backend/package.json
 sed -i "s+0.0.0+$_latest_version+g" frontend/package.json
+sed -i 's|https://github.com/tabler|https://mirror.ghproxy.com/https://github.com/tabler|g' frontend/package.json
 
 # Fix nginx config files for use with openresty defaults
 sed -i 's+^daemon+#daemon+g' docker/rootfs/etc/nginx/nginx.conf
