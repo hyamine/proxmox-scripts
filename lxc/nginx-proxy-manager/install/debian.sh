@@ -117,9 +117,14 @@ apt install -y -q --no-install-recommends openresty
 
 # Install nodejs
 log "Installing nodejs"
-wget -qO - https://deb.nodesource.com/gpgkey/nodesource.gpg.key | apt-key add -
-wget -qO - https://deb.nodesource.com/setup_16.x | bash -
-apt install -y -q --no-install-recommends nodejs npm gcc g++ make
+# shellcheck disable=SC1101
+wget -qO-  https://fastly.jsdelivr.net/gh/nvm-sh/nvm@master/install.sh | \
+  sed 's|raw.githubusercontent.com/${NVM_GITHUB_REPO}/${NVM_VERSION}|fastly.jsdelivr.net/gh/${NVM_GITHUB_REPO}@${NVM_VERSION}|g' | \
+  /bin/bash
+nvm install 16
+#wget -qO - https://deb.nodesource.com/gpgkey/nodesource.gpg.key | apt-key add -
+#wget -qO - https://deb.nodesource.com/setup_16.x | bash -
+#apt install -y -q --no-install-recommends nodejs npm gcc g++ make
 npm install --global yarn
 
 npm config set registry https://registry.npmmirror.com

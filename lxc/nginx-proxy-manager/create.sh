@@ -205,7 +205,6 @@ pct start $_ctid
 sleep 5
 
 echo "_rootfs=$_rootfs ; _storage=$_storage ; _ctid=$_ctid"
-exit 0
 
 DISTRO=$(pct exec $_ctid -- sh -c "cat /etc/*-release | grep -w ID | cut -d= -f2 | tr -d '\"'")
 pct push $_ctid ${CURRENT_SCRIPT_DIR}/setup.sh /tmp/npm_setup.sh
