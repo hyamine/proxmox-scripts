@@ -131,10 +131,10 @@ warn "bridge:   $_bridge"
 warn "storage:  $_storage"
 warn "templates:  $_storage_template"
 warn ""
-warn "If you want to abort, hit ctrl+c within 10 seconds..."
+warn "If you want to abort, hit ctrl+c within 5 seconds..."
 echo ""
 
-sleep 10
+sleep 5
 
 # Download latest Alpine LXC template
 info "Updating LXC template list..."
