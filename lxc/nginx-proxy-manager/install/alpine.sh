@@ -11,11 +11,11 @@ TEMPLOG="$TEMPDIR/tmplog"
 TEMPERR="$TEMPDIR/tmperr"
 LASTCMD=""
 WGETOPT="-t 2 -T 15 -q"
-DEVDEPS="npm g++ make gcc git python3-dev musl-dev libffi-dev openssl-dev"
+DEVDEPS="npm g++ make gcc git python3-dev musl-dev libffi-dev openssl-dev jq"
 NPMURL="https://github.com/NginxProxyManager/nginx-proxy-manager"
 source <(cat /etc/os-release | tr -s '\n' | awk '{print "OS_"$0}')
 cd $TEMPDIR
-touch $TEMPLOG
+touch "$TEMPLOG"
 
 # Helpers
 log() {
@@ -48,7 +48,7 @@ log "Updating container OS"
 echo "fs.file-max = 65535" > /etc/sysctl.conf
 apk update
 apk upgrade
-adduser npm
+adduser npm --shell=/bin/false --no-create-home -D
 
 # Check for previous install
 if [ -f /etc/init.d/npm ]; then
@@ -85,25 +85,38 @@ apk update
 
 # Install dependancies
 log "Installing dependencies"
-apk add python3 openresty nodejs yarn openssl apache2-utils logrotate $DEVDEPS
-
+apk add python3 py3-pip openresty nodejs yarn openssl apache2-utils logrotate $DEVDEPS
+#python3 -m ensurepip --upgrade
+pip3 config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple/
+pip3 config set install.trusted-host pypi.tuna.tsinghua.edu.cn
+pip3 config list
+pip3 install --upgrade pip
 # Setup python env and PIP
 log "Setting up python"
 python3 -m venv /opt/certbot/
-python3 -m ensurepip --upgrade
+[ -f ~/.profile ] || touch ~/.profile && chmod 0644 ~/.profile
+echo "source /opt/certbot/bin/activate" >> ~/.profile
+source ~/.profile
+
 # Install certbot and python dependancies
 pip3 install --no-cache-dir -U cryptography==3.3.2
 pip3 install --no-cache-dir cffi certbot
 
 log "Checking for latest NPM release"
 # Get latest version information for nginx-proxy-manager
-wget $WGETOPT -O ./_latest_release $NPMURL/releases/latest
-_latest_version=$(basename $(cat ./_latest_release | grep -wo "expanded_assets/v.*\d") | cut -d'v' -f2)
+URL_INFO_API_1="https://api.github.com/repos/NginxProxyManager/nginx-proxy-manager/releases/latest"
+URL_INFO_API_2="https://api.upup.cool/repo/NginxProxyManager/nginx-proxy-manager/info"
+PROXY_MANAGER_INFO="$(wget -qO - $URL_INFO_API_1 || wget -qO - URL_INFO_API_2)"
+_latest_version=$(echo $PROXY_MANAGER_INFO | jq -r 'if .version then .version else .tag_name end')
 
 # Download nginx-proxy-manager source
-log "Downloading NPM v$_latest_version"
-wget $WGETOPT -c $NPMURL/archive/v$_latest_version.tar.gz -O - | tar -xz
-cd ./nginx-proxy-manager-$_latest_version
+PROXY_MANAGER_URL_1="https://mirror.ghproxy.com/${NPMURL}/archive/refs/tags/${_latest_version}.tar.gz"
+PROXY_MANAGER_URL_2="https://api.upup.cool/repo/NginxProxyManager/nginx-proxy-manager/source"
+PROXY_MANAGER_URL_3="${NPMURL}/archive/refs/tags/${_latest_version}.tar.gz"
+PROXY_DOWN_FILE="${_latest_version}.tar.gz"
+wget -O ${PROXY_DOWN_FILE} ${PROXY_MANAGER_URL_1} || wget -O ${PROXY_DOWN_FILE} ${PROXY_MANAGER_URL_2} || wget -O ${PROXY_DOWN_FILE} ${PROXY_MANAGER_URL_3}
+tar xzf ${PROXY_DOWN_FILE}
+cd nginx-proxy-manager-*
 
 log "Setting up enviroment"
 # Crate required symbolic links

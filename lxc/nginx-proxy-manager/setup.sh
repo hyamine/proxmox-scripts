@@ -14,10 +14,11 @@ source <(cat /etc/os-release | tr -s '\n' | sed 's/ubuntu/debian/' | awk '{print
 [ -z "${OS_ID}" ] && exit_with_msg 101 "OS Not Supported"
 [ -n "$(grep 'kthreadd' /proc/2/status 2>/dev/null)" ] && exit_with_msg 102 "Only Supported In Container"
 
-if [ "$1" != "" ] && [ -f "$1" ]; then
+if [ -f "$1" ]; then
   INSTALL_SCRIPT="$1"
 else
   NSTALL_SCRIPT="$TEMPDIR/install/${OS_ID}.sh"
+  mkdir -p "$TEMPDIR/install"
   wget -O ${INSTALL_SCRIPT} https://fastly.jsdelivr.net/gh/hyamine/proxmox-scripts@main/lxc/nginx-proxy-manager/install/$OS_ID.sh
 fi
 [ ! -f "$NSTALL_SCRIPT" ] && exit_with_msg 103 "OS Not Supported or Download install file failed"
@@ -39,9 +40,7 @@ echo "TZ=Asia/Shanghai" >> /etc/environment
 #chmod 0644 ~/.yarnrc /usr/local/share/.yarnrc ~/.config/pip/pip.conf
 
 if [ "$(command -v bash)" ]; then
-  $(command -v sudo) bash "$INSTALL_SCRIPT"
+  $(command -v sudo) bash "$INSTALL_SCRIPT" "$TEMPDIR"
 else
-  sh "$INSTALL_SCRIPT"
+  sh "$INSTALL_SCRIPT" "$TEMPDIR"
 fi
-
-

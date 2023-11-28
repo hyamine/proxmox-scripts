@@ -87,12 +87,14 @@ fi
 # Install Python
 log "Installing python"
 apt install -y -q --no-install-recommends python3 python3-distutils python3-venv python3-pip
-
+pip3 config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple/
+pip3 config set install.trusted-host pypi.tuna.tsinghua.edu.cn
+pip3 config list
+pip3 install --upgrade pip
 python3 -m venv /opt/certbot/
 #export PATH=/opt/certbot/bin:$PATH
 source /opt/certbot/bin/activate
-pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple/
-pip config set install.trusted-host pypi.tuna.tsinghua.edu.cn
+
 
 grep -qo "/opt/certbot" ~/.bashrc || echo "source /opt/certbot/bin/activate" >> ~/.bashrc
 ln -sf /opt/certbot/bin/activate /etc/profile.d/pyenv_activate.sh
@@ -132,9 +134,12 @@ nvm install 16
 #wget -qO - https://deb.nodesource.com/gpgkey/nodesource.gpg.key | apt-key add -
 #wget -qO - https://deb.nodesource.com/setup_16.x | bash -
 #apt install -y -q --no-install-recommends nodejs npm gcc g++ make
+npm config set registry https://registry.npmmirror.com
 npm install --global yarn
 
-npm config set registry https://registry.npmmirror.com
+ln -sf $(command -v node) /usr/bin/node
+ln -sf $(command -v yarn) /usr/bin/yarn
+ln -sf $(command -v npm) /usr/bin/npm
 #npm config set disturl https://npmmirror.com/dist
 #npm config set electron_mirror https://npmmirror.com/mirrors/electron/
 #npm config set sass_binary_site https://npmmirror.com/mirrors/node-sass/
@@ -260,6 +265,11 @@ cd /app
 export NODE_ENV=development
 yarn install --network-timeout=30000
 
+[ -f /usr/lib/systemd/system/openresty.service ] \
+  && sed -i 's|/usr/local/openresty/nginx/logs/nginx.pid|/run/nginx/nginx.pid|g' \
+  /usr/lib/systemd/system/openresty.service
+mkdir -p /run/nginx && chmod 0755 /run/nginx
+
 # Create NPM service
 log "Creating NPM service"
 cat << 'EOF' > /lib/systemd/system/npm.service
@@ -279,6 +289,8 @@ Restart=on-failure
 [Install]
 WantedBy=multi-user.target
 EOF
+
+adduser npm --shell=/bin/false --no-create-home
 systemctl daemon-reload
 systemctl enable npm
 
