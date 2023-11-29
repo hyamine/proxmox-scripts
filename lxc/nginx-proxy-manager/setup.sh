@@ -3,7 +3,7 @@
 set -eux
 set -o pipefail
 
-SUPPORTED_OS="debian alpine"
+SUPPORTED_OS="debian ubuntu alpine"
 CURRENT_SHELL=""
 INSTALL_SCRIPT=""
 #LAST_COMMAND="$_"  # IMPORTANT: This must be the first line in the script after the shebang otherwise it will not work
@@ -37,7 +37,8 @@ exit_with_msg() {
 }
 check_support() {
   [ -f /etc/os-release ] || exit_with_msg 100 "OS Not Supported"
-  source <(cat /etc/os-release | tr -s '\n' | sed 's/ubuntu/debian/' | awk '{print "OS_"$0}')
+  #source <(cat /etc/os-release | tr -s '\n' | sed 's/ubuntu/debian/' | awk '{print "OS_"$0}')
+  source <(cat /etc/os-release | tr -s '\n' | awk '{print "OS_"$0}')
   #CURRENT_SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" &> /dev/null && pwd)
   for the_os in $SUPPORTED_OS; do
     [ "$the_os" = "$OS_ID" ] && IS_SUPPORTED=true && break
@@ -56,7 +57,22 @@ prepare_dep_alpine() {
   chmod 0644 ~/.bashrc
 }
 prepare_dep_debian() {
-  echo todo...
+    apt update
+    apt install -y apt-transport-https ca-certificates wget
+  if [ -f "/etc/apt/sources.list.d/debian.sources" ]; then
+      sed -i 's/deb.debian.org/mirrors.ustc.edu.cn/g' /etc/apt/sources.list.d/debian.sources
+      sed -i 's|security.debian.org|mirrors.ustc.edu.cn/debian-security|g' /etc/apt/sources.list.d/debian.sources
+      sed -i 's/http:/https:/g' /etc/apt/sources.list.d/debian.sources
+    else
+      sed -i 's/deb.debian.org/mirrors.ustc.edu.cn/g' /etc/apt/sources.list
+      sed -i 's|security.debian.org|mirrors.ustc.edu.cn/debian-security|g' /etc/apt/sources.list
+      sed -i 's/http:/https:/g' /etc/apt/sources.list
+      #sed -i 's/security.debian.org/mirrors.cloud.tencent.com/g' /etc/apt/sources.list
+    fi
+    apt update
+}
+prepare_dep_ubuntu() {
+  todo...
 }
 get_install_script() {
   [ $# -gt 0 ] && INSTALL_SCRIPT="$1"
@@ -64,7 +80,9 @@ get_install_script() {
   if [ ! -f "$INSTALL_SCRIPT" ] && [ -n "${BASH_SOURCE+set}" ]; then
     INSTALL_SCRIPT="$(dirname "${BASH_SOURCE[0]}")/install/${OS_ID}.sh"
   fi
-  [ -f "$INSTALL_SCRIPT" ] || INSTALL_SCRIPT="$(readlink -f -- "$0")" && INSTALL_SCRIPT="$(dirname "$INSTALL_SCRIPT")/install/${OS_ID}.sh"
+  if [ ! -f "$INSTALL_SCRIPT" ]; then
+    INSTALL_SCRIPT="$(readlink -f -- "$0")" && INSTALL_SCRIPT="$(dirname "$INSTALL_SCRIPT")/install/${OS_ID}.sh"
+  fi
   if [ ! -f "$INSTALL_SCRIPT" ]; then
     INSTALL_SCRIPT="$TEMPDIR/install/${OS_ID}.sh"
     wget -O "${INSTALL_SCRIPT}" https://fastly.jsdelivr.net/gh/hyamine/proxmox-scripts@main/lxc/nginx-proxy-manager/install/$OS_ID.sh
@@ -79,8 +97,6 @@ check_support
 prepare_temp_dir
 prepare_dep_${OS_ID}
 get_install_script "$@"
-echo INSTALL_SCRIPT=$INSTALL_SCRIPT ......
-
 SET_UP_SCRIPT="$TEMPDIR/_setup_on_${OS_ID}.sh"
 echo TEMPDIR=$TEMPDIR
 echo echo SET_UP_SCRIPT=$SET_UP_SCRIPT
@@ -92,6 +108,7 @@ TEMPLOG=$TEMPLOG
 TEMPERR="$TEMPERR"
 OS_ID=$OS_ID
 OS_VERSION_ID=$OS_VERSION_ID
+OS_VERSION_CODENAME=$OS_VERSION_CODENAME
 set -eux
 set -o pipefail
 LASTCMD=""
@@ -179,6 +196,97 @@ download_NPM() {
   cd nginx-proxy-manager-*
 }
 
+set_up_NPM_env() {
+  log "Setting up enviroment"
+  # Crate required symbolic links
+  ln -sf /usr/bin/python3 /usr/bin/python
+  ln -sf /opt/certbot/bin/pip /usr/bin/pip
+  ln -sf /opt/certbot/bin/certbot /usr/bin/certbot
+  ln -sf /usr/local/openresty/nginx/sbin/nginx /usr/sbin/nginx
+  ln -sf /usr/local/openresty/nginx/ /etc/nginx
+
+  # Update NPM version in package.json files
+  sed -i "s+0.0.0+$_latest_version+g" backend/package.json
+  sed -i "s+0.0.0+$_latest_version+g" frontend/package.json
+  sed -i 's|https://github.com/tabler|https://mirror.ghproxy.com/https://github.com/tabler|g' frontend/package.json
+
+  # Fix nginx config files for use with openresty defaults
+  sed -i 's+^daemon+#daemon+g' docker/rootfs/etc/nginx/nginx.conf
+  NGINX_CONFS=$(find "$(pwd)" -type f -name "*.conf")
+  for NGINX_CONF in $NGINX_CONFS; do
+    sed -i 's+include conf.d+include /etc/nginx/conf.d+g' "$NGINX_CONF"
+  done
+
+  # Copy runtime files
+  mkdir -p /var/www/html /etc/nginx/logs
+  cp -r docker/rootfs/var/www/html/* /var/www/html/
+  cp -r docker/rootfs/etc/nginx/* /etc/nginx/
+  cp docker/rootfs/etc/letsencrypt.ini /etc/letsencrypt.ini
+  cp docker/rootfs/etc/logrotate.d/nginx-proxy-manager /etc/logrotate.d/nginx-proxy-manager
+  ln -sf /etc/nginx/nginx.conf /etc/nginx/conf/nginx.conf
+  rm -f /etc/nginx/conf.d/dev.conf
+
+  # Create required folders
+  mkdir -p /tmp/nginx/body \
+  /run/nginx \
+  /data/nginx \
+  /data/custom_ssl \
+  /data/logs \
+  /data/access \
+  /data/nginx/default_host \
+  /data/nginx/default_www \
+  /data/nginx/proxy_host \
+  /data/nginx/redirection_host \
+  /data/nginx/stream \
+  /data/nginx/dead_host \
+  /data/nginx/temp \
+  /var/lib/nginx/cache/public \
+  /var/lib/nginx/cache/private \
+  /var/cache/nginx/proxy_temp
+
+  chmod -R 777 /var/cache/nginx
+  chown root /tmp/nginx
+
+  # Dynamically generate resolvers file, if resolver is IPv6, enclose in `[]`
+  # thanks @tfmm
+  echo resolver "$(awk 'BEGIN{ORS=" "} $1=="nameserver" {print ($2 ~ ":")? "["$2"]": $2}' /etc/resolv.conf);" > /etc/nginx/conf.d/include/resolvers.conf
+
+  # Generate dummy self-signed certificate.
+  if [ ! -f /data/nginx/dummycert.pem ] || [ ! -f /data/nginx/dummykey.pem ]; then
+    log "Generating dummy SSL certificate"
+    openssl req -new -newkey rsa:2048 -days 3650 -nodes -x509 -subj "/O=Nginx Proxy Manager/OU=Dummy Certificate/CN=localhost" -keyout /data/nginx/dummykey.pem -out /data/nginx/dummycert.pem
+  fi
+
+  # Copy app files
+  mkdir -p /app/global /app/frontend/images
+  cp -r backend/* /app
+  cp -r global/* /app/global
+}
+
+init_NPM_backend() {
+  # Initialize backend
+  log "Initializing backend"
+  rm -rf /app/config/default.json &>/dev/null
+  if [ ! -f /app/config/production.json ]; then
+  cat << 'EEOOFF' > /app/config/production.json
+{
+  "database": {
+    "engine": "knex-native",
+    "knex": {
+      "client": "sqlite3",
+      "connection": {
+        "filename": "/data/database.sqlite"
+      }
+    }
+  }
+}
+EEOOFF
+  fi
+  cd /app
+  export NODE_ENV=development
+  yarn install --network-timeout=30000
+}
+
 #trap trapexit EXIT SIGTERM
 
 cd $TEMPDIR
@@ -186,8 +294,8 @@ cd $TEMPDIR
 pre_install
 install_depend
 install_nvm_nodejs
-install_openresty
 install_python3
+install_openresty
 download_NPM
 set_up_NPM_env
 build_NPM_frontend

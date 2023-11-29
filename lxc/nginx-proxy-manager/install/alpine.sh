@@ -84,108 +84,17 @@ install_python3() {
   pip3 install --no-cache-dir cffi certbot
 }
 
-set_up_NPM_env() {
-  log "Setting up enviroment"
-  # Crate required symbolic links
-  ln -sf /usr/bin/python3 /usr/bin/python
-  ln -sf /opt/certbot/bin/pip /usr/bin/pip
-  ln -sf /opt/certbot/bin/certbot /usr/bin/certbot
-  ln -sf /usr/local/openresty/nginx/sbin/nginx /usr/sbin/nginx
-  ln -sf /usr/local/openresty/nginx/ /etc/nginx
-
-  # Update NPM version in package.json files
-  sed -i "s+0.0.0+$_latest_version+g" backend/package.json
-  sed -i "s+0.0.0+$_latest_version+g" frontend/package.json
-  sed -i 's|https://github.com/tabler|https://mirror.ghproxy.com/https://github.com/tabler|g' frontend/package.json
-
-  # Fix nginx config files for use with openresty defaults
-  sed -i 's+^daemon+#daemon+g' docker/rootfs/etc/nginx/nginx.conf
-  NGINX_CONFS=$(find "$(pwd)" -type f -name "*.conf")
-  for NGINX_CONF in $NGINX_CONFS; do
-    sed -i 's+include conf.d+include /etc/nginx/conf.d+g' "$NGINX_CONF"
-  done
-
-  # Copy runtime files
-  mkdir -p /var/www/html /etc/nginx/logs
-  cp -r docker/rootfs/var/www/html/* /var/www/html/
-  cp -r docker/rootfs/etc/nginx/* /etc/nginx/
-  cp docker/rootfs/etc/letsencrypt.ini /etc/letsencrypt.ini
-  cp docker/rootfs/etc/logrotate.d/nginx-proxy-manager /etc/logrotate.d/nginx-proxy-manager
-  ln -sf /etc/nginx/nginx.conf /etc/nginx/conf/nginx.conf
-  rm -f /etc/nginx/conf.d/dev.conf
-
-  # Create required folders
-  mkdir -p /tmp/nginx/body \
-  /run/nginx \
-  /data/nginx \
-  /data/custom_ssl \
-  /data/logs \
-  /data/access \
-  /data/nginx/default_host \
-  /data/nginx/default_www \
-  /data/nginx/proxy_host \
-  /data/nginx/redirection_host \
-  /data/nginx/stream \
-  /data/nginx/dead_host \
-  /data/nginx/temp \
-  /var/lib/nginx/cache/public \
-  /var/lib/nginx/cache/private \
-  /var/cache/nginx/proxy_temp
-
-  chmod -R 777 /var/cache/nginx
-  chown root /tmp/nginx
-
-  # Dynamically generate resolvers file, if resolver is IPv6, enclose in `[]`
-  # thanks @tfmm
-  echo resolver "$(awk 'BEGIN{ORS=" "} $1=="nameserver" {print ($2 ~ ":")? "["$2"]": $2}' /etc/resolv.conf);" > /etc/nginx/conf.d/include/resolvers.conf
-
-  # Generate dummy self-signed certificate.
-  if [ ! -f /data/nginx/dummycert.pem ] || [ ! -f /data/nginx/dummykey.pem ]; then
-    log "Generating dummy SSL certificate"
-    openssl req -new -newkey rsa:2048 -days 3650 -nodes -x509 -subj "/O=Nginx Proxy Manager/OU=Dummy Certificate/CN=localhost" -keyout /data/nginx/dummykey.pem -out /data/nginx/dummycert.pem
-  fi
-
-  # Copy app files
-  mkdir -p /app/global /app/frontend/images
-  cp -r backend/* /app
-  cp -r global/* /app/global
-}
-
 build_NPM_frontend() {
   # Build the frontend
   log "Building frontend"
   cd ./frontend
   export NODE_ENV=development
-  yarn install || \
+  yarn install --network-timeout=30000 || \
   sed -i 's|open(build_file_path, "rU").read()|open(build_file_path, "r").read()|g' $(find / -iname 'input.py') && \
   yarn install
   yarn build
   cp -r dist/* /app/frontend
   cp -r app-images/* /app/frontend/images
-}
-
-init_NPM_backend() {
-  # Initialize backend
-  log "Initializing backend"
-  rm -rf /app/config/default.json &>/dev/null
-  if [ ! -f /app/config/production.json ]; then
-  cat << 'EOF' > /app/config/production.json
-{
-  "database": {
-    "engine": "knex-native",
-    "knex": {
-      "client": "sqlite3",
-      "connection": {
-        "filename": "/data/database.sqlite"
-      }
-    }
-  }
-}
-EOF
-  fi
-  cd /app
-  export NODE_ENV=development
-  yarn install
 }
 
 create_NPM_service() {

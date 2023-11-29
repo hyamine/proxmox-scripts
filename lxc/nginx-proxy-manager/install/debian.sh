@@ -1,25 +1,9 @@
 #!/usr/bin/env bash
 
-set -eux
-set -o pipefail
-#trap trapexit EXIT SIGTERM
 echo $PATH | grep /usr/local/bin >/dev/null 2>&1 || export PATH=$PATH:/usr/local/bin
-
-DISTRO_ID=$(cat /etc/*-release | grep -w ID | cut -d= -f2 | tr -d '"')
-DISTRO_CODENAME=$(cat /etc/*-release | grep -w VERSION_CODENAME | cut -d= -f2 | tr -d '"')
-
-TEMPDIR="$1"
-[ -d "${TEMPDIR}" ] || TEMPDIR=$(mktemp -d)
-TEMPLOG="$TEMPDIR/tmplog"
-TEMPERR="$TEMPDIR/tmperr"
-LASTCMD=""
 WGETOPT="-t 1 -T 15 -q"
 DEVDEPS="git build-essential libffi-dev libssl-dev python3-dev"
-NPMURL="https://github.com/NginxProxyManager/nginx-proxy-manager"
 export DEBIAN_FRONTEND=noninteractive
-
-cd $TEMPDIR
-touch $TEMPLOG
 
 # Helpers
 log() { 
@@ -35,16 +19,6 @@ trapexit_clean() {
 }
 pre_install() {
   [ -f ~/.bashrc ] || touch ~/.bashrc && chmod 0644 ~/.bashrc
-  if [ -f "/etc/apt/sources.list.d/debian.sources" ]; then
-    sed -i 's/deb.debian.org/mirrors.ustc.edu.cn/g' /etc/apt/sources.list.d/debian.sources
-    sed -i 's|security.debian.org|mirrors.ustc.edu.cn/debian-security|g' /etc/apt/sources.list.d/debian.sources
-    sed -i 's/http:/https:/g' /etc/apt/sources.list.d/debian.sources
-  else
-    sed -i 's/deb.debian.org/mirrors.ustc.edu.cn/g' /etc/apt/sources.list
-    sed -i 's|security.debian.org|mirrors.ustc.edu.cn/debian-security|g' /etc/apt/sources.list
-    sed -i 's/http:/https:/g' /etc/apt/sources.list
-    #sed -i 's/security.debian.org/mirrors.cloud.tencent.com/g' /etc/apt/sources.list
-  fi
   # Check for previous install
   if [ -f /lib/systemd/system/npm.service ]; then
     log "Stopping services"
@@ -64,10 +38,9 @@ pre_install() {
 install_depend() {
   # Install dependencies
   log "Installing dependencies"
-  apt update
   apt upgrade -y
-  apt install apt-transport-https ca-certificates gnupg -y
-  apt install -y --no-install-recommends $DEVDEPS gnupg openssl ca-certificates apache2-utils logrotate jq wget
+  #apt install  gnupg -y
+  apt install -y --no-install-recommends $DEVDEPS gnupg openssl ca-certificates apache2-utils logrotate jq
 }
 
 install_python3() {
@@ -77,15 +50,16 @@ install_python3() {
   pip3 config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple/
   pip3 config set install.trusted-host pypi.tuna.tsinghua.edu.cn
   pip3 config list
-  pip3 install --upgrade pip
   python3 -m venv /opt/certbot/
   #export PATH=/opt/certbot/bin:$PATH
   source /opt/certbot/bin/activate
   grep -qo "/opt/certbot" ~/.bashrc || echo "source /opt/certbot/bin/activate" >> ~/.bashrc
   ln -sf /opt/certbot/bin/activate /etc/profile.d/pyenv_activate.sh
+  pip3 install --upgrade pip
 }
 
 install_openresty() {
+  OPENRESTY_REP_PREFIX="https://mirrors.ustc.edu.cn/openresty"
   if [ "$(getconf LONG_BIT)" = "32" ]; then
   pip install --no-cache-dir -U cryptography==3.3.2
   fi
@@ -93,121 +67,39 @@ install_openresty() {
 
   # Install openresty
   log "Installing openresty"
-  wget -O - https://openresty.org/package/pubkey.gpg | apt-key add -
-  _distro_release=$(wget $WGETOPT "http://openresty.org/package/$DISTRO_ID/dists/" -O - | grep -o "$DISTRO_CODENAME" | head -n1 || true)
-  if [ $DISTRO_ID = "ubuntu" ]; then
-    echo "deb [trusted=yes] http://openresty.org/package/$DISTRO_ID ${_distro_release:-focal} main" | tee /etc/apt/sources.list.d/openresty.list
+  OS_ARCH_PATH=""
+  uname -m | sed 's/aarch64/arm64/' | grep 'arm64' && OS_ARCH_PATH="/arm64"
+  wget -O - $OPENRESTY_REP_PREFIX/pubkey.gpg | apt-key add -
+  _distro_release=$(wget $WGETOPT "$OPENRESTY_REP_PREFIX/$OS_ID/dists/" -O - | grep -o "$OS_VERSION_CODENAME" | head -n1 || true)
+  if [ $OS_ID = "ubuntu" ]; then
+    echo "deb [trusted=yes] ${OPENRESTY_REP_PREFIX}${OS_ARCH_PATH}/$OS_ID ${_distro_release:-focal} main" | tee /etc/apt/sources.list.d/openresty.list
   else
-    echo "deb [trusted=yes] http://openresty.org/package/$DISTRO_ID ${_distro_release:-bullseye} openresty" | tee /etc/apt/sources.list.d/openresty.list
+    echo "deb [trusted=yes] ${OPENRESTY_REP_PREFIX}${OS_ARCH_PATH}/$OS_ID ${_distro_release:-bullseye} openresty" | tee /etc/apt/sources.list.d/openresty.list
   fi
   apt update
   apt install -y -q --no-install-recommends openresty
 }
-set_up_NPM_env() {
-  log "Setting up enviroment"
-  # Crate required symbolic links
-  ln -sf /usr/bin/python3 /usr/bin/python
-  ln -sf /opt/certbot/bin/pip /usr/bin/pip
-  ln -sf /opt/certbot/bin/certbot /usr/bin/certbot
-  ln -sf /usr/local/openresty/nginx/sbin/nginx /usr/sbin/nginx
-  ln -sf /usr/local/openresty/nginx/ /etc/nginx
 
-  # Update NPM version in package.json files
-  sed -i "s+0.0.0+$_latest_version+g" backend/package.json
-  sed -i "s+0.0.0+$_latest_version+g" frontend/package.json
-  sed -i 's|https://github.com/tabler|https://mirror.ghproxy.com/https://github.com/tabler|g' frontend/package.json
-
-  # Fix nginx config files for use with openresty defaults
-  sed -i 's+^daemon+#daemon+g' docker/rootfs/etc/nginx/nginx.conf
-  NGINX_CONFS=$(find "$(pwd)" -type f -name "*.conf")
-  for NGINX_CONF in $NGINX_CONFS; do
-    sed -i 's+include conf.d+include /etc/nginx/conf.d+g' "$NGINX_CONF"
-  done
-
-  # Copy runtime files
-  mkdir -p /var/www/html /etc/nginx/logs
-  cp -r docker/rootfs/var/www/html/* /var/www/html/
-  cp -r docker/rootfs/etc/nginx/* /etc/nginx/
-  cp docker/rootfs/etc/letsencrypt.ini /etc/letsencrypt.ini
-  cp docker/rootfs/etc/logrotate.d/nginx-proxy-manager /etc/logrotate.d/nginx-proxy-manager
-  ln -sf /etc/nginx/nginx.conf /etc/nginx/conf/nginx.conf
-  rm -f /etc/nginx/conf.d/dev.conf
-
-  # Create required folders
-  mkdir -p /tmp/nginx/body \
-  /run/nginx \
-  /data/nginx \
-  /data/custom_ssl \
-  /data/logs \
-  /data/access \
-  /data/nginx/default_host \
-  /data/nginx/default_www \
-  /data/nginx/proxy_host \
-  /data/nginx/redirection_host \
-  /data/nginx/stream \
-  /data/nginx/dead_host \
-  /data/nginx/temp \
-  /var/lib/nginx/cache/public \
-  /var/lib/nginx/cache/private \
-  /var/cache/nginx/proxy_temp
-
-  chmod -R 777 /var/cache/nginx
-  chown root /tmp/nginx
-
-  # Dynamically generate resolvers file, if resolver is IPv6, enclose in `[]`
-  # thanks @tfmm
-  echo resolver "$(awk 'BEGIN{ORS=" "} $1=="nameserver" {print ($2 ~ ":")? "["$2"]": $2}' /etc/resolv.conf);" > /etc/nginx/conf.d/include/resolvers.conf
-
-  # Generate dummy self-signed certificate.
-  if [ ! -f /data/nginx/dummycert.pem ] || [ ! -f /data/nginx/dummykey.pem ]; then
-    log "Generating dummy SSL certificate"
-    openssl req -new -newkey rsa:2048 -days 3650 -nodes -x509 -subj "/O=Nginx Proxy Manager/OU=Dummy Certificate/CN=localhost" -keyout /data/nginx/dummykey.pem -out /data/nginx/dummycert.pem
-  fi
-
-  # Copy app files
-  mkdir -p /app/global /app/frontend/images
-  cp -r backend/* /app
-  cp -r global/* /app/global
+build_NPM_frontend() {
+  # Build the frontend
+  log "Building frontend"
+  cd ./frontend
+  export NODE_ENV=development
+  yarn install --network-timeout=30000
+  yarn build
+  cp -r dist/* /app/frontend
+  cp -r app-images/* /app/frontend/images
 }
-# Build the frontend
-log "Building frontend"
-cd ./frontend
-export NODE_ENV=development
-yarn install --network-timeout=30000
-yarn build
-cp -r dist/* /app/frontend
-cp -r app-images/* /app/frontend/images
 
-# Initialize backend
-log "Initializing backend"
-rm -rf /app/config/default.json &>/dev/null
-if [ ! -f /app/config/production.json ]; then
-cat << 'EOF' > /app/config/production.json
-{
-  "database": {
-    "engine": "knex-native",
-    "knex": {
-      "client": "sqlite3",
-      "connection": {
-        "filename": "/data/database.sqlite"
-      }
-    }
-  }
-}
-EOF
-fi
-cd /app
-export NODE_ENV=development
-yarn install --network-timeout=30000
+create_NPM_service() {
+  [ -f /usr/lib/systemd/system/openresty.service ] \
+    && sed -i 's|/usr/local/openresty/nginx/logs/nginx.pid|/run/nginx/nginx.pid|g' \
+    /usr/lib/systemd/system/openresty.service
+  mkdir -p /run/nginx && chmod 0755 /run/nginx
 
-[ -f /usr/lib/systemd/system/openresty.service ] \
-  && sed -i 's|/usr/local/openresty/nginx/logs/nginx.pid|/run/nginx/nginx.pid|g' \
-  /usr/lib/systemd/system/openresty.service
-mkdir -p /run/nginx && chmod 0755 /run/nginx
-
-# Create NPM service
-log "Creating NPM service"
-cat << 'EOF' > /lib/systemd/system/npm.service
+  # Create NPM service
+  log "Creating NPM service"
+  cat << 'EOF' > /lib/systemd/system/npm.service
 [Unit]
 Description=Nginx Proxy Manager
 After=network.target
@@ -224,20 +116,22 @@ Restart=on-failure
 [Install]
 WantedBy=multi-user.target
 EOF
+  adduser npm --shell=/bin/false --no-create-home
+  systemctl daemon-reload
+  systemctl enable npm
+}
 
-adduser npm --shell=/bin/false --no-create-home
-systemctl daemon-reload
-systemctl enable npm
+start_now() {
+  # Start services
+  log "Starting services"
+  systemctl start openresty
+  systemctl start npm
 
-# Start services
-log "Starting services"
-systemctl start openresty
-systemctl start npm
+  IP=$(hostname -I | cut -f1 -d ' ')
+  log "Installation complete
 
-IP=$(hostname -I | cut -f1 -d ' ')
-log "Installation complete
+  \e[0mNginx Proxy Manager should be reachable at the following URL.
 
-\e[0mNginx Proxy Manager should be reachable at the following URL.
-
-      http://${IP}:81
-"
+        http://${IP}:81
+  "
+}
