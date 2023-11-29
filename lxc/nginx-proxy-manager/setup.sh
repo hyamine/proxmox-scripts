@@ -6,6 +6,7 @@ set -o pipefail
 SUPPORTED_OS="debian ubuntu alpine"
 CURRENT_SHELL=""
 INSTALL_SCRIPT=""
+OS_VERSION_CODENAME=""
 #LAST_COMMAND="$_"  # IMPORTANT: This must be the first line in the script after the shebang otherwise it will not work
 #echo LAST_COMMAND=$LAST_COMMAND
 #temp="$(ps -o pid,comm | grep -Fw $$)"; for word in $temp; do CURRENT_SHELL=$word; done; unset temp word
