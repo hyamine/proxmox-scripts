@@ -28,216 +28,147 @@ log() {
   printf "\033c\e[3J$logs\n\e[34m[info] $*\e[0m\n" | tee $TEMPLOG;
 }
 
-trapexit() {
-  status=$?
-  
-  if [[ $status -eq 0 ]]; then
-    logs=$(cat $TEMPLOG | sed -e "s/34/32/g" | sed -e "s/info/success/g")
-    clear && printf "\033c\e[3J$logs\n";
-  elif [[ -s $TEMPERR ]]; then
-    logs=$(cat $TEMPLOG | sed -e "s/34/31/g" | sed -e "s/info/error/g")
-    err=$(cat $TEMPERR | sed $'s,\x1b\\[[0-9;]*[a-zA-Z],,g' | rev | cut -d':' -f1 | rev | cut -d' ' -f2-) 
-    clear && printf "\033c\e[3J$logs\e[33m\n$0: line $LASTCMD\n\e[33;2;3m$err\e[0m\n"
-  else
-    printf "\e[33muncaught error occurred\n\e[0m"
-  fi
-  
-  # Cleanup
+trapexit_clean() {
   apt remove --purge -y $DEVDEPS -qq &>/dev/null
   apt autoremove -y -qq &>/dev/null
   apt clean
-  rm -rf $TEMPDIR
-  rm -rf /root/.cache
 }
-
-if [ -f "/etc/apt/sources.list.d/debian.sources" ]; then
-  sed -i 's/deb.debian.org/mirrors.ustc.edu.cn/g' /etc/apt/sources.list.d/debian.sources
-  sed -i 's|security.debian.org|mirrors.ustc.edu.cn/debian-security|g' /etc/apt/sources.list.d/debian.sources
-  sed -i 's/http:/https:/g' /etc/apt/sources.list.d/debian.sources
-else
-  sed -i 's/deb.debian.org/mirrors.ustc.edu.cn/g' /etc/apt/sources.list
-  sed -i 's|security.debian.org|mirrors.ustc.edu.cn/debian-security|g' /etc/apt/sources.list
-  sed -i 's/http:/https:/g' /etc/apt/sources.list
-  #sed -i 's/security.debian.org/mirrors.cloud.tencent.com/g' /etc/apt/sources.list
-fi
-
-# Install dependencies
-log "Installing dependencies"
-apt update
-apt upgrade -y
-apt install apt-transport-https ca-certificates gnupg -y
-apt install -y --no-install-recommends $DEVDEPS gnupg openssl ca-certificates apache2-utils logrotate jq wget
-
-# Check for previous install
-if [ -f /lib/systemd/system/npm.service ]; then
-  log "Stopping services"
-  systemctl stop openresty
-  systemctl stop npm
-  
-  # Cleanup for new install
-  log "Cleaning old files"
-  rm -rf /app \
-  /var/www/html \
-  /etc/nginx \
-  /var/log/nginx \
-  /var/lib/nginx \
-  /var/cache/nginx &>/dev/null
-fi
-
-# Install Python
-log "Installing python"
-apt install -y -q --no-install-recommends python3 python3-distutils python3-venv python3-pip
-pip3 config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple/
-pip3 config set install.trusted-host pypi.tuna.tsinghua.edu.cn
-pip3 config list
-pip3 install --upgrade pip
-python3 -m venv /opt/certbot/
-#export PATH=/opt/certbot/bin:$PATH
-source /opt/certbot/bin/activate
-
-
-grep -qo "/opt/certbot" ~/.bashrc || echo "source /opt/certbot/bin/activate" >> ~/.bashrc
-ln -sf /opt/certbot/bin/activate /etc/profile.d/pyenv_activate.sh
-
-# Install certbot and python dependancies
-#wget -qO - https://bootstrap.pypa.io/get-pip.py | python -
-if [ "$(getconf LONG_BIT)" = "32" ]; then
-pip install --no-cache-dir -U cryptography==3.3.2
-fi
-pip install --no-cache-dir cffi certbot
-
-# Install openresty
-log "Installing openresty"
-wget -O - https://openresty.org/package/pubkey.gpg | apt-key add -
-_distro_release=$(wget $WGETOPT "http://openresty.org/package/$DISTRO_ID/dists/" -O - | grep -o "$DISTRO_CODENAME" | head -n1 || true)
-if [ $DISTRO_ID = "ubuntu" ]; then
-  echo "deb [trusted=yes] http://openresty.org/package/$DISTRO_ID ${_distro_release:-focal} main" | tee /etc/apt/sources.list.d/openresty.list
-else
-  echo "deb [trusted=yes] http://openresty.org/package/$DISTRO_ID ${_distro_release:-bullseye} openresty" | tee /etc/apt/sources.list.d/openresty.list
-fi
-apt update
-apt install -y -q --no-install-recommends openresty
-
-install_nvm_nodejs() {
-  # Install nodejs
-  log "Installing nodejs"
-  # shellcheck disable=SC1101
-  wget -qO-  https://fastly.jsdelivr.net/gh/nvm-sh/nvm@master/install.sh | \
-    sed 's|raw.githubusercontent.com/${NVM_GITHUB_REPO}/${NVM_VERSION}|fastly.jsdelivr.net/gh/${NVM_GITHUB_REPO}@${NVM_VERSION}|g' | \
-    sed 's|NVM_SOURCE_URL="https://github.com|NVM_SOURCE_URL="https://mirror.ghproxy.com/https://github.com|g' | \
-    /bin/bash
-
-  if [ "$(command -v nvm)" = "" ]; then
-    source ~/.bashrc
+pre_install() {
+  [ -f ~/.bashrc ] || touch ~/.bashrc && chmod 0644 ~/.bashrc
+  if [ -f "/etc/apt/sources.list.d/debian.sources" ]; then
+    sed -i 's/deb.debian.org/mirrors.ustc.edu.cn/g' /etc/apt/sources.list.d/debian.sources
+    sed -i 's|security.debian.org|mirrors.ustc.edu.cn/debian-security|g' /etc/apt/sources.list.d/debian.sources
+    sed -i 's/http:/https:/g' /etc/apt/sources.list.d/debian.sources
+  else
+    sed -i 's/deb.debian.org/mirrors.ustc.edu.cn/g' /etc/apt/sources.list
+    sed -i 's|security.debian.org|mirrors.ustc.edu.cn/debian-security|g' /etc/apt/sources.list
+    sed -i 's/http:/https:/g' /etc/apt/sources.list
+    #sed -i 's/security.debian.org/mirrors.cloud.tencent.com/g' /etc/apt/sources.list
   fi
-  nvm install 16
-  npm config set registry https://registry.npmmirror.com
-  npm install --global yarn
+  # Check for previous install
+  if [ -f /lib/systemd/system/npm.service ]; then
+    log "Stopping services"
+    systemctl stop openresty
+    systemctl stop npm
 
-  ln -sf $(command -v node) /usr/bin/node
-  ln -sf $(command -v yarn) /usr/bin/yarn
-  ln -sf $(command -v npm) /usr/bin/npm
-
-  yarn config set registry https://registry.npmmirror.com -g
-  yarn config set disturl https://npmmirror.com/dist -g
-  yarn config set electron_mirror https://npmmirror.com/mirrors/electron/ -g
-  yarn config set sass_binary_site https://npmmirror.com/mirrors/node-sass/ -g
-  yarn config set phantomjs_cdnurl https://npmmirror.com/mirrors/phantomjs/ -g
-  yarn config set chromedriver_cdnurl https://cdn.npmmirror.com/dist/chromedriver -g
-  yarn config set operadriver_cdnurl https://cdn.npmmirror.com/dist/operadriver -g
-  yarn config set fse_binary_host_mirror https://npmmirror.com/mirrors/fsevents -g
+    # Cleanup for new install
+    log "Cleaning old files"
+    rm -rf /app \
+    /var/www/html \
+    /etc/nginx \
+    /var/log/nginx \
+    /var/lib/nginx \
+    /var/cache/nginx &>/dev/null
+  fi
+}
+install_depend() {
+  # Install dependencies
+  log "Installing dependencies"
+  apt update
+  apt upgrade -y
+  apt install apt-transport-https ca-certificates gnupg -y
+  apt install -y --no-install-recommends $DEVDEPS gnupg openssl ca-certificates apache2-utils logrotate jq wget
 }
 
-#wget -qO - https://deb.nodesource.com/gpgkey/nodesource.gpg.key | apt-key add -
-#wget -qO - https://deb.nodesource.com/setup_16.x | bash -
-#apt install -y -q --no-install-recommends nodejs npm gcc g++ make
+install_python3() {
+  # Install Python
+  log "Installing python"
+  apt install -y -q --no-install-recommends python3 python3-distutils python3-venv python3-pip
+  pip3 config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple/
+  pip3 config set install.trusted-host pypi.tuna.tsinghua.edu.cn
+  pip3 config list
+  pip3 install --upgrade pip
+  python3 -m venv /opt/certbot/
+  #export PATH=/opt/certbot/bin:$PATH
+  source /opt/certbot/bin/activate
+  grep -qo "/opt/certbot" ~/.bashrc || echo "source /opt/certbot/bin/activate" >> ~/.bashrc
+  ln -sf /opt/certbot/bin/activate /etc/profile.d/pyenv_activate.sh
+}
 
-#npm config set disturl https://npmmirror.com/dist
-#npm config set electron_mirror https://npmmirror.com/mirrors/electron/
-#npm config set sass_binary_site https://npmmirror.com/mirrors/node-sass/
-#npm config set phantomjs_cdnurl https://npmmirror.com/mirrors/phantomjs/
+install_openresty() {
+  if [ "$(getconf LONG_BIT)" = "32" ]; then
+  pip install --no-cache-dir -U cryptography==3.3.2
+  fi
+  pip install --no-cache-dir cffi certbot
 
+  # Install openresty
+  log "Installing openresty"
+  wget -O - https://openresty.org/package/pubkey.gpg | apt-key add -
+  _distro_release=$(wget $WGETOPT "http://openresty.org/package/$DISTRO_ID/dists/" -O - | grep -o "$DISTRO_CODENAME" | head -n1 || true)
+  if [ $DISTRO_ID = "ubuntu" ]; then
+    echo "deb [trusted=yes] http://openresty.org/package/$DISTRO_ID ${_distro_release:-focal} main" | tee /etc/apt/sources.list.d/openresty.list
+  else
+    echo "deb [trusted=yes] http://openresty.org/package/$DISTRO_ID ${_distro_release:-bullseye} openresty" | tee /etc/apt/sources.list.d/openresty.list
+  fi
+  apt update
+  apt install -y -q --no-install-recommends openresty
+}
+set_up_NPM_env() {
+  log "Setting up enviroment"
+  # Crate required symbolic links
+  ln -sf /usr/bin/python3 /usr/bin/python
+  ln -sf /opt/certbot/bin/pip /usr/bin/pip
+  ln -sf /opt/certbot/bin/certbot /usr/bin/certbot
+  ln -sf /usr/local/openresty/nginx/sbin/nginx /usr/sbin/nginx
+  ln -sf /usr/local/openresty/nginx/ /etc/nginx
 
-# Get latest version information for nginx-proxy-manager
-log "Checking for latest NPM release"
-URL_INFO_API_1="https://api.github.com/repos/NginxProxyManager/nginx-proxy-manager/releases/latest"
-URL_INFO_API_2="https://api.upup.cool/repo/NginxProxyManager/nginx-proxy-manager/info"
-PROXY_MANAGER_INFO="$(wget -qO - $URL_INFO_API_1 || wget -qO - URL_INFO_API_2)"
-_latest_version=$(echo $PROXY_MANAGER_INFO | jq -r 'if .version then .version else .tag_name end')
+  # Update NPM version in package.json files
+  sed -i "s+0.0.0+$_latest_version+g" backend/package.json
+  sed -i "s+0.0.0+$_latest_version+g" frontend/package.json
+  sed -i 's|https://github.com/tabler|https://mirror.ghproxy.com/https://github.com/tabler|g' frontend/package.json
 
-PROXY_MANAGER_URL_1="https://mirror.ghproxy.com/${NPMURL}/archive/refs/tags/${_latest_version}.tar.gz"
-PROXY_MANAGER_URL_2="https://api.upup.cool/repo/NginxProxyManager/nginx-proxy-manager/source"
-PROXY_MANAGER_URL_3="${NPMURL}/archive/refs/tags/${_latest_version}.tar.gz"
-PROXY_DOWN_FILE="${_latest_version}.tar.gz"
-wget -O ${PROXY_DOWN_FILE} ${PROXY_MANAGER_URL_1} || wget -O ${PROXY_DOWN_FILE} ${PROXY_MANAGER_URL_2} || wget -O ${PROXY_DOWN_FILE} ${PROXY_MANAGER_URL_3}
-tar xzf ${PROXY_DOWN_FILE}
-cd nginx-proxy-manager-*
+  # Fix nginx config files for use with openresty defaults
+  sed -i 's+^daemon+#daemon+g' docker/rootfs/etc/nginx/nginx.conf
+  NGINX_CONFS=$(find "$(pwd)" -type f -name "*.conf")
+  for NGINX_CONF in $NGINX_CONFS; do
+    sed -i 's+include conf.d+include /etc/nginx/conf.d+g' "$NGINX_CONF"
+  done
 
-log "Setting up enviroment"
-# Crate required symbolic links
-ln -sf /usr/bin/python3 /usr/bin/python
-ln -sf /opt/certbot/bin/pip /usr/bin/pip
-ln -sf /opt/certbot/bin/certbot /usr/bin/certbot
-ln -sf /usr/local/openresty/nginx/sbin/nginx /usr/sbin/nginx
-ln -sf /usr/local/openresty/nginx/ /etc/nginx
+  # Copy runtime files
+  mkdir -p /var/www/html /etc/nginx/logs
+  cp -r docker/rootfs/var/www/html/* /var/www/html/
+  cp -r docker/rootfs/etc/nginx/* /etc/nginx/
+  cp docker/rootfs/etc/letsencrypt.ini /etc/letsencrypt.ini
+  cp docker/rootfs/etc/logrotate.d/nginx-proxy-manager /etc/logrotate.d/nginx-proxy-manager
+  ln -sf /etc/nginx/nginx.conf /etc/nginx/conf/nginx.conf
+  rm -f /etc/nginx/conf.d/dev.conf
 
-# Update NPM version in package.json files
-sed -i "s+0.0.0+$_latest_version+g" backend/package.json
-sed -i "s+0.0.0+$_latest_version+g" frontend/package.json
-sed -i 's|https://github.com/tabler|https://mirror.ghproxy.com/https://github.com/tabler|g' frontend/package.json
+  # Create required folders
+  mkdir -p /tmp/nginx/body \
+  /run/nginx \
+  /data/nginx \
+  /data/custom_ssl \
+  /data/logs \
+  /data/access \
+  /data/nginx/default_host \
+  /data/nginx/default_www \
+  /data/nginx/proxy_host \
+  /data/nginx/redirection_host \
+  /data/nginx/stream \
+  /data/nginx/dead_host \
+  /data/nginx/temp \
+  /var/lib/nginx/cache/public \
+  /var/lib/nginx/cache/private \
+  /var/cache/nginx/proxy_temp
 
-# Fix nginx config files for use with openresty defaults
-sed -i 's+^daemon+#daemon+g' docker/rootfs/etc/nginx/nginx.conf
-NGINX_CONFS=$(find "$(pwd)" -type f -name "*.conf")
-for NGINX_CONF in $NGINX_CONFS; do
-  sed -i 's+include conf.d+include /etc/nginx/conf.d+g' "$NGINX_CONF"
-done
+  chmod -R 777 /var/cache/nginx
+  chown root /tmp/nginx
 
-# Copy runtime files
-mkdir -p /var/www/html /etc/nginx/logs
-cp -r docker/rootfs/var/www/html/* /var/www/html/
-cp -r docker/rootfs/etc/nginx/* /etc/nginx/
-cp docker/rootfs/etc/letsencrypt.ini /etc/letsencrypt.ini
-cp docker/rootfs/etc/logrotate.d/nginx-proxy-manager /etc/logrotate.d/nginx-proxy-manager
-ln -sf /etc/nginx/nginx.conf /etc/nginx/conf/nginx.conf
-rm -f /etc/nginx/conf.d/dev.conf
+  # Dynamically generate resolvers file, if resolver is IPv6, enclose in `[]`
+  # thanks @tfmm
+  echo resolver "$(awk 'BEGIN{ORS=" "} $1=="nameserver" {print ($2 ~ ":")? "["$2"]": $2}' /etc/resolv.conf);" > /etc/nginx/conf.d/include/resolvers.conf
 
-# Create required folders
-mkdir -p /tmp/nginx/body \
-/run/nginx \
-/data/nginx \
-/data/custom_ssl \
-/data/logs \
-/data/access \
-/data/nginx/default_host \
-/data/nginx/default_www \
-/data/nginx/proxy_host \
-/data/nginx/redirection_host \
-/data/nginx/stream \
-/data/nginx/dead_host \
-/data/nginx/temp \
-/var/lib/nginx/cache/public \
-/var/lib/nginx/cache/private \
-/var/cache/nginx/proxy_temp
+  # Generate dummy self-signed certificate.
+  if [ ! -f /data/nginx/dummycert.pem ] || [ ! -f /data/nginx/dummykey.pem ]; then
+    log "Generating dummy SSL certificate"
+    openssl req -new -newkey rsa:2048 -days 3650 -nodes -x509 -subj "/O=Nginx Proxy Manager/OU=Dummy Certificate/CN=localhost" -keyout /data/nginx/dummykey.pem -out /data/nginx/dummycert.pem
+  fi
 
-chmod -R 777 /var/cache/nginx
-chown root /tmp/nginx
-
-# Dynamically generate resolvers file, if resolver is IPv6, enclose in `[]`
-# thanks @tfmm
-echo resolver "$(awk 'BEGIN{ORS=" "} $1=="nameserver" {print ($2 ~ ":")? "["$2"]": $2}' /etc/resolv.conf);" > /etc/nginx/conf.d/include/resolvers.conf
-
-# Generate dummy self-signed certificate.
-if [ ! -f /data/nginx/dummycert.pem ] || [ ! -f /data/nginx/dummykey.pem ]; then
-  log "Generating dummy SSL certificate"
-  openssl req -new -newkey rsa:2048 -days 3650 -nodes -x509 -subj "/O=Nginx Proxy Manager/OU=Dummy Certificate/CN=localhost" -keyout /data/nginx/dummykey.pem -out /data/nginx/dummycert.pem
-fi
-
-# Copy app files
-mkdir -p /app/global /app/frontend/images
-cp -r backend/* /app
-cp -r global/* /app/global
-
+  # Copy app files
+  mkdir -p /app/global /app/frontend/images
+  cp -r backend/* /app
+  cp -r global/* /app/global
+}
 # Build the frontend
 log "Building frontend"
 cd ./frontend

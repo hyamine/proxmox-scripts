@@ -111,7 +111,75 @@ log() {
 echo load "$INSTALL_SCRIPT"
 . "$INSTALL_SCRIPT"
 
-#trap trapexit_${OS_ID} EXIT SIGTERM
+trapexit() {
+  status=$?
+
+  if [[ $status -eq 0 ]]; then
+    logs=$(cat $TEMPLOG | sed -e "s/34/32/g" | sed -e "s/info/success/g")
+    clear && printf "\033c\e[3J$logs\n";
+  elif [[ -s $TEMPERR ]]; then
+    logs=$(cat $TEMPLOG | sed -e "s/34/31/g" | sed -e "s/info/error/g")
+    err=$(cat $TEMPERR | sed $'s,\x1b\\[[0-9;]*[a-zA-Z],,g' | rev | cut -d':' -f1 | rev | cut -d' ' -f2-)
+    clear && printf "\033c\e[3J$logs\e[33m\n$0: line $LASTCMD\n\e[33;2;3m$err\e[0m\n"
+  else
+    printf "\e[33muncaught error occurred\n\e[0m"
+  fi
+  # Cleanup
+  rm -rf $TEMPDIR
+  rm -rf /root/.cache
+  if [ "$(type -t trapexit_clean)" != "" ]; then
+    trapexit_clean
+  fi
+ }
+
+install_nvm_nodejs() {
+  # Install nodejs
+  log "Installing nodejs"
+  # shellcheck disable=SC1101
+  wget -qO-  https://fastly.jsdelivr.net/gh/nvm-sh/nvm@master/install.sh | \
+    sed 's|raw.githubusercontent.com/${NVM_GITHUB_REPO}/${NVM_VERSION}|fastly.jsdelivr.net/gh/${NVM_GITHUB_REPO}@${NVM_VERSION}|g' | \
+    sed 's|NVM_SOURCE_URL="https://github.com|NVM_SOURCE_URL="https://mirror.ghproxy.com/https://github.com|g' > $TEMPDIR/nvm_install.sh
+
+  $SCRIPT_SHELL $TEMPDIR/nvm_install.sh
+  if [ "$(command -v nvm)" = "" ]; then
+    [ -f ~/.bashrc ] && source ~/.bashrc
+    [ -f ~/.profile ] && source ~/.profile
+  fi
+  nvm install 16
+  npm config set registry https://registry.npmmirror.com
+  npm install --force --global yarn
+
+  ln -sf $(command -v node) /usr/bin/node
+  ln -sf $(command -v yarn) /usr/bin/yarn
+  ln -sf $(command -v npm) /usr/bin/npm
+
+  yarn config set registry https://registry.npmmirror.com -g
+  yarn config set disturl https://npmmirror.com/dist -g
+  yarn config set electron_mirror https://npmmirror.com/mirrors/electron/ -g
+  yarn config set sass_binary_site https://npmmirror.com/mirrors/node-sass/ -g
+  yarn config set phantomjs_cdnurl https://npmmirror.com/mirrors/phantomjs/ -g
+  yarn config set chromedriver_cdnurl https://cdn.npmmirror.com/dist/chromedriver -g
+  yarn config set operadriver_cdnurl https://cdn.npmmirror.com/dist/operadriver -g
+  yarn config set fse_binary_host_mirror https://npmmirror.com/mirrors/fsevents -g
+}
+
+download_NPM() {
+  # Get latest version information for nginx-proxy-manager
+  log "Checking for latest NPM release"
+  URL_INFO_API_1="https://api.github.com/repos/NginxProxyManager/nginx-proxy-manager/releases/latest"
+  URL_INFO_API_2="https://api.upup.cool/repo/NginxProxyManager/nginx-proxy-manager/info"
+  PROXY_MANAGER_INFO="$(wget -qO - $URL_INFO_API_1 || wget -qO - URL_INFO_API_2)"
+  _latest_version=$(echo $PROXY_MANAGER_INFO | jq -r 'if .version then .version else .tag_name end')
+  PROXY_MANAGER_URL_1="https://mirror.ghproxy.com/${NPMURL}/archive/refs/tags/${_latest_version}.tar.gz"
+  PROXY_MANAGER_URL_2="https://api.upup.cool/repo/NginxProxyManager/nginx-proxy-manager/source"
+  PROXY_MANAGER_URL_3="${NPMURL}/archive/refs/tags/${_latest_version}.tar.gz"
+  PROXY_DOWN_FILE="${_latest_version}.tar.gz"
+  wget -O ${PROXY_DOWN_FILE} ${PROXY_MANAGER_URL_1} || wget -O ${PROXY_DOWN_FILE} ${PROXY_MANAGER_URL_2} || wget -O ${PROXY_DOWN_FILE} ${PROXY_MANAGER_URL_3}
+  tar xzf ${PROXY_DOWN_FILE}
+  cd nginx-proxy-manager-*
+}
+
+#trap trapexit EXIT SIGTERM
 
 cd $TEMPDIR
 
