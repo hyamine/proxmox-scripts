@@ -34,7 +34,7 @@ function error {
 }
 
 # Base raw github URL
-#_raw_base="https://raw.githubusercontent.com/ej52/proxmox-scripts/main/lxc/nginx-proxy-manager"
+_raw_base="https://fastly.jsdelivr.net/gh/hyamine/proxmox-scripts@main/lxc/nginx-proxy-manager"
 # Operating system
 _os_type=debian
 _os_version=12
@@ -208,7 +208,12 @@ sleep 5
 echo "_rootfs=$_rootfs ; _storage=$_storage ; _ctid=$_ctid"
 
 DISTRO=$(pct exec $_ctid -- sh -c "cat /etc/*-release | grep -w ID | cut -d= -f2 | tr -d '\"'")
-pct push $_ctid ${CURRENT_SCRIPT_DIR}/setup.sh /tmp/npm_setup.sh
-pct push $_ctid ${CURRENT_SCRIPT_DIR}/install/${DISTRO}.sh /tmp/${DISTRO}_npm_install.sh
+
+[ -f "${CURRENT_SCRIPT_DIR}/setup.sh" ] && \
+pct push $_ctid ${CURRENT_SCRIPT_DIR}/setup.sh /tmp/npm_setup.sh && \
+[ -f "${CURRENT_SCRIPT_DIR}/install/${DISTRO}.sh" ] && \
+pct push $_ctid "${CURRENT_SCRIPT_DIR}/install/${DISTRO}.sh" /tmp/${DISTRO}_npm_install.sh && \
+RUN_LOCAL_SCRIPT="true" && \
 pct exec $_ctid -- sh /tmp/npm_setup.sh /tmp/${DISTRO}_npm_install.sh
-#pct exec $_ctid -- sh -c "wget --no-cache -qO - $_raw_base/setup.sh | sh"
+
+[ "$RUN_LOCAL_SCRIPT" != "true" ] && pct exec $_ctid -- sh -c "wget --no-cache -qO - $_raw_base/setup.sh | sh"
