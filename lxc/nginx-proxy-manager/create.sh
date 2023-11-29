@@ -5,8 +5,8 @@ set -o pipefail
 
 CURRENT_SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" &> /dev/null && pwd)
 
-trap error ERR
-trap 'popd >/dev/null; rm -rf $_temp_dir;' EXIT
+#trap error ERR
+#trap 'popd >/dev/null; echo $_temp_dir | grep "/tmp" && rm -rf $_temp_dir;' EXIT
 
 function info { echo -e "\e[32m[info] $*\e[39m"; }
 function warn { echo -e "\e[33m[warn] $*\e[39m"; }
