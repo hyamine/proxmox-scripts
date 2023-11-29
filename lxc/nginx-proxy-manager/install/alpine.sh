@@ -1,5 +1,7 @@
 #!/usr/bin/env sh
 
+WGETOPT="-t 2 -T 15 -q"
+
 trapexit_alpine() {
   status=$?
 
@@ -22,6 +24,8 @@ trapexit_alpine() {
 pre_install() {
   log "Updating container OS"
   echo "fs.file-max = 65535" > /etc/sysctl.conf
+  [ -f ~/.profile ] || touch ~/.profile && chmod 0644 ~/.profile
+  #[ -f ~/.bashrc ] || touch ~/.bashrc && chmod 0644 ~/.bashrc
   if [ -f /etc/init.d/npm ]; then
     log "Stopping services"
     rc-service npm stop &>/dev/null
@@ -45,14 +49,47 @@ pre_install() {
 install_depend() {
     log "Installing dependencies"
     # Install dependancies
-    DEVDEPS="npm g++ make gcc git python3-dev musl-dev libffi-dev openssl-dev jq"
-    adduser npm --shell=/bin/false --no-create-home -D
+    DEVDEPS="npm g++ make gcc libgcc linux-headers git musl-dev libffi-dev openssl openssl-dev jq binutils findutils"
+    echo id -u npm
+    id -u npm > /dev/null 2>&1 || adduser npm --shell=/bin/false --no-create-home -D;
     apk upgrade
-    apk openssl apache2-utils logrotate $DEVDEPS
+    apk add openssl apache2-utils logrotate $DEVDEPS
+    apk add -U curl bash ca-certificates ncurses coreutils grep util-linux gcompat
+}
+
+install_nvm_nodejs() {
+  # Install nodejs
+  log "Installing nodejs"
+  # shellcheck disable=SC1101
+  wget -qO-  https://fastly.jsdelivr.net/gh/nvm-sh/nvm@master/install.sh | \
+    sed 's|raw.githubusercontent.com/${NVM_GITHUB_REPO}/${NVM_VERSION}|fastly.jsdelivr.net/gh/${NVM_GITHUB_REPO}@${NVM_VERSION}|g' | \
+    sed 's|NVM_SOURCE_URL="https://github.com|NVM_SOURCE_URL="https://mirror.ghproxy.com/https://github.com|g' > $TEMPDIR/nvm_install.sh
+
+  $SCRIPT_SHELL $TEMPDIR/nvm_install.sh
+  if [ "$(command -v nvm)" = "" ]; then
+    [ -f ~/.bashrc ] && source ~/.bashrc
+    [ -f ~/.profile ] && source ~/.profile
+  fi
+  nvm install 16
+  npm config set registry https://registry.npmmirror.com
+  npm install --force --global yarn
+
+  ln -sf $(command -v node) /usr/bin/node
+  ln -sf $(command -v yarn) /usr/bin/yarn
+  ln -sf $(command -v npm) /usr/bin/npm
+
+  yarn config set registry https://registry.npmmirror.com -g
+  yarn config set disturl https://npmmirror.com/dist -g
+  yarn config set electron_mirror https://npmmirror.com/mirrors/electron/ -g
+  yarn config set sass_binary_site https://npmmirror.com/mirrors/node-sass/ -g
+  yarn config set phantomjs_cdnurl https://npmmirror.com/mirrors/phantomjs/ -g
+  yarn config set chromedriver_cdnurl https://cdn.npmmirror.com/dist/chromedriver -g
+  yarn config set operadriver_cdnurl https://cdn.npmmirror.com/dist/operadriver -g
+  yarn config set fse_binary_host_mirror https://npmmirror.com/mirrors/fsevents -g
 }
 
 install_nodejs() {
-  apk add nodejs yarn
+  apk add nodejs
 }
 
 install_openresty() {
@@ -72,7 +109,7 @@ install_openresty() {
 }
 
 install_python3() {
-  apk add python3 py3-pip
+  apk add python3 py3-pip python3-dev
   #python3 -m ensurepip --upgrade
   pip3 config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple/
   pip3 config set install.trusted-host pypi.tuna.tsinghua.edu.cn
@@ -81,7 +118,6 @@ install_python3() {
   # Setup python env and PIP
   log "Setting up python"
   python3 -m venv /opt/certbot/
-  [ -f ~/.profile ] || touch ~/.profile && chmod 0644 ~/.profile
   echo "source /opt/certbot/bin/activate" >> ~/.profile
   source ~/.profile
 
@@ -120,6 +156,7 @@ set_up_NPM_env() {
   # Update NPM version in package.json files
   sed -i "s+0.0.0+$_latest_version+g" backend/package.json
   sed -i "s+0.0.0+$_latest_version+g" frontend/package.json
+  sed -i 's|https://github.com/tabler|https://mirror.ghproxy.com/https://github.com/tabler|g' frontend/package.json
 
   # Fix nginx config files for use with openresty defaults
   sed -i 's+^daemon+#daemon+g' docker/rootfs/etc/nginx/nginx.conf
@@ -179,6 +216,8 @@ build_NPM_frontend() {
   log "Building frontend"
   cd ./frontend
   export NODE_ENV=development
+  yarn install || \
+  sed -i 's|open(build_file_path, "rU").read()|open(build_file_path, "r").read()|g' $(find / -iname 'input.py') && \
   yarn install
   yarn build
   cp -r dist/* /app/frontend

@@ -118,41 +118,45 @@ fi
 apt update
 apt install -y -q --no-install-recommends openresty
 
-# Install nodejs
-log "Installing nodejs"
-# shellcheck disable=SC1101
-wget -qO-  https://fastly.jsdelivr.net/gh/nvm-sh/nvm@master/install.sh | \
-  sed 's|raw.githubusercontent.com/${NVM_GITHUB_REPO}/${NVM_VERSION}|fastly.jsdelivr.net/gh/${NVM_GITHUB_REPO}@${NVM_VERSION}|g' | \
-  sed 's|NVM_SOURCE_URL="https://github.com|NVM_SOURCE_URL="https://mirror.ghproxy.com/https://github.com|g' | \
-  /bin/bash
+install_nvm_nodejs() {
+  # Install nodejs
+  log "Installing nodejs"
+  # shellcheck disable=SC1101
+  wget -qO-  https://fastly.jsdelivr.net/gh/nvm-sh/nvm@master/install.sh | \
+    sed 's|raw.githubusercontent.com/${NVM_GITHUB_REPO}/${NVM_VERSION}|fastly.jsdelivr.net/gh/${NVM_GITHUB_REPO}@${NVM_VERSION}|g' | \
+    sed 's|NVM_SOURCE_URL="https://github.com|NVM_SOURCE_URL="https://mirror.ghproxy.com/https://github.com|g' | \
+    /bin/bash
 
-if [ "$(command -v nvm)" = "" ]; then
-  source ~/.bashrc
-fi
-nvm install 16
+  if [ "$(command -v nvm)" = "" ]; then
+    source ~/.bashrc
+  fi
+  nvm install 16
+  npm config set registry https://registry.npmmirror.com
+  npm install --global yarn
+
+  ln -sf $(command -v node) /usr/bin/node
+  ln -sf $(command -v yarn) /usr/bin/yarn
+  ln -sf $(command -v npm) /usr/bin/npm
+
+  yarn config set registry https://registry.npmmirror.com -g
+  yarn config set disturl https://npmmirror.com/dist -g
+  yarn config set electron_mirror https://npmmirror.com/mirrors/electron/ -g
+  yarn config set sass_binary_site https://npmmirror.com/mirrors/node-sass/ -g
+  yarn config set phantomjs_cdnurl https://npmmirror.com/mirrors/phantomjs/ -g
+  yarn config set chromedriver_cdnurl https://cdn.npmmirror.com/dist/chromedriver -g
+  yarn config set operadriver_cdnurl https://cdn.npmmirror.com/dist/operadriver -g
+  yarn config set fse_binary_host_mirror https://npmmirror.com/mirrors/fsevents -g
+}
 
 #wget -qO - https://deb.nodesource.com/gpgkey/nodesource.gpg.key | apt-key add -
 #wget -qO - https://deb.nodesource.com/setup_16.x | bash -
 #apt install -y -q --no-install-recommends nodejs npm gcc g++ make
-npm config set registry https://registry.npmmirror.com
-npm install --global yarn
 
-ln -sf $(command -v node) /usr/bin/node
-ln -sf $(command -v yarn) /usr/bin/yarn
-ln -sf $(command -v npm) /usr/bin/npm
 #npm config set disturl https://npmmirror.com/dist
 #npm config set electron_mirror https://npmmirror.com/mirrors/electron/
 #npm config set sass_binary_site https://npmmirror.com/mirrors/node-sass/
 #npm config set phantomjs_cdnurl https://npmmirror.com/mirrors/phantomjs/
 
-yarn config set registry https://registry.npmmirror.com -g
-yarn config set disturl https://npmmirror.com/dist -g
-yarn config set electron_mirror https://npmmirror.com/mirrors/electron/ -g
-yarn config set sass_binary_site https://npmmirror.com/mirrors/node-sass/ -g
-yarn config set phantomjs_cdnurl https://npmmirror.com/mirrors/phantomjs/ -g
-yarn config set chromedriver_cdnurl https://cdn.npmmirror.com/dist/chromedriver -g
-yarn config set operadriver_cdnurl https://cdn.npmmirror.com/dist/operadriver -g
-yarn config set fse_binary_host_mirror https://npmmirror.com/mirrors/fsevents -g
 
 # Get latest version information for nginx-proxy-manager
 log "Checking for latest NPM release"
