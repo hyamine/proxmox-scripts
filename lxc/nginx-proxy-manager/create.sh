@@ -5,8 +5,8 @@ set -o pipefail
 
 CURRENT_SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" &> /dev/null && pwd)
 
-#trap error ERR
-#trap 'popd >/dev/null; echo $_temp_dir | grep "/tmp" && rm -rf $_temp_dir;' EXIT
+trap error ERR
+trap 'popd >/dev/null; echo $_temp_dir | grep "/tmp" && rm -rf $_temp_dir;' EXIT
 
 function info { echo -e "\e[32m[info] $*\e[39m"; }
 function warn { echo -e "\e[33m[warn] $*\e[39m"; }
@@ -34,7 +34,8 @@ function error {
 }
 
 # Base raw github URL
-_raw_base="https://fastly.jsdelivr.net/gh/hyamine/proxmox-scripts@main/lxc/nginx-proxy-manager"
+#_raw_base="https://fastly.jsdelivr.net/gh/hyamine/proxmox-scripts@main/lxc/nginx-proxy-manager"
+_raw_base="https://g.osspub.cn/https://raw.githubusercontent.com/hyamine/proxmox-scripts/master/lxc/nginx-proxy-manager"
 # Operating system
 _os_type=debian
 _os_version=12

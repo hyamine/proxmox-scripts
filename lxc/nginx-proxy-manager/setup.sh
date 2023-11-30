@@ -288,7 +288,7 @@ EEOOFF
   yarn install --network-timeout=30000
 }
 
-#trap trapexit EXIT SIGTERM
+trap trapexit EXIT SIGTERM
 
 cd $TEMPDIR
 
