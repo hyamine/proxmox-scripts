@@ -156,7 +156,7 @@ install_nvm_nodejs() {
   # shellcheck disable=SC1101
   wget -qO-  https://fastly.jsdelivr.net/gh/nvm-sh/nvm@master/install.sh | \
     sed 's|raw.githubusercontent.com/${NVM_GITHUB_REPO}/${NVM_VERSION}|fastly.jsdelivr.net/gh/${NVM_GITHUB_REPO}@${NVM_VERSION}|g' | \
-    sed 's|NVM_SOURCE_URL="https://github.com|NVM_SOURCE_URL="https://mirror.ghproxy.com/https://github.com|g' > $TEMPDIR/nvm_install.sh
+    sed 's|NVM_SOURCE_URL="https://github.com|NVM_SOURCE_URL="https://g.osspub.cn/https://github.com|g' > $TEMPDIR/nvm_install.sh
 
   $SCRIPT_SHELL $TEMPDIR/nvm_install.sh
   if [ "$(command -v nvm)" = "" ]; then
@@ -184,11 +184,11 @@ install_nvm_nodejs() {
 download_NPM() {
   # Get latest version information for nginx-proxy-manager
   log "Checking for latest NPM release"
-  URL_INFO_API_1="https://api.github.com/repos/NginxProxyManager/nginx-proxy-manager/releases/latest"
+  URL_INFO_API_1="https://g.osspub.cn/https://api.github.com/repos/NginxProxyManager/nginx-proxy-manager/releases/latest"
   URL_INFO_API_2="https://api.upup.cool/repo/NginxProxyManager/nginx-proxy-manager/info"
   PROXY_MANAGER_INFO="$(wget -qO - $URL_INFO_API_1 || wget -qO - URL_INFO_API_2)"
   _latest_version=$(echo $PROXY_MANAGER_INFO | jq -r 'if .version then .version else .tag_name end')
-  PROXY_MANAGER_URL_1="https://mirror.ghproxy.com/${NPMURL}/archive/refs/tags/${_latest_version}.tar.gz"
+  PROXY_MANAGER_URL_1="https://g.osspub.cn/${NPMURL}/archive/refs/tags/${_latest_version}.tar.gz"
   PROXY_MANAGER_URL_2="https://api.upup.cool/repo/NginxProxyManager/nginx-proxy-manager/source"
   PROXY_MANAGER_URL_3="${NPMURL}/archive/refs/tags/${_latest_version}.tar.gz"
   PROXY_DOWN_FILE="${_latest_version}.tar.gz"
@@ -209,7 +209,7 @@ set_up_NPM_env() {
   # Update NPM version in package.json files
   sed -i "s+0.0.0+$_latest_version+g" backend/package.json
   sed -i "s+0.0.0+$_latest_version+g" frontend/package.json
-  sed -i 's|https://github.com/tabler|https://mirror.ghproxy.com/https://github.com/tabler|g' frontend/package.json
+  sed -i 's|https://github.com/tabler|https://g.osspub.cn/https://github.com/tabler|g' frontend/package.json
 
   # Fix nginx config files for use with openresty defaults
   sed -i 's+^daemon+#daemon+g' docker/rootfs/etc/nginx/nginx.conf

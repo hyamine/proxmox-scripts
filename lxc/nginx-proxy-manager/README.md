@@ -10,21 +10,23 @@ To create a new LXC container on Proxmox and setup Nginx Proxy Manager to run in
 ***Note:*** _This will create alpine container_
 
 ```bash
-curl -fsSL https://fastly.jsdelivr.net/gh//hyamine/proxmox-scripts@main/lxc/nginx-proxy-manager/create.sh | bash -s
+curl -fsSL https://fastly.jsdelivr.net/gh/hyamine/proxmox-scripts@main/lxc/nginx-proxy-manager/create.sh | bash -s
 ```
 
 ### Command line arguments
-| argument           | default              | description                                            |
-|--------------------|----------------------|--------------------------------------------------------|
-| --id          | $nextid                   | container id                                           |
-| --bridge      | vmbr0                     | bridge used for eth0                                   |
-| --cores       | 1                         | number of cpu cores                                    |
-| --disksize    | 2G                        | size of disk                                           |
-| --hostname    | nginx-proxy-manager       | hostname of the container                              |
-| --memory      | 512                       | amount of memory                                       |
-| --storage     | local-lvm                 | storage location for container disk                    |
-| --templates   | local                     | storage location for templates                         |
-| --swap        | 0                         | amount of SWAP                                         |
+| argument    | default             | description                           |
+|-------------|---------------------|---------------------------------------|
+| --id        | $nextid             | container id                          |
+| --bridge    | vmbr0               | bridge used for eth0                  |
+| --cores     | 1                   | number of cpu cores                   |
+| --disksize  | 2G                  | size of disk                          |
+| --hostname  | nginx-proxy-manager | hostname of the container             |
+| --memory    | 512                 | amount of memory                      |
+| --storage   | local-lvm           | storage location for container disk   |
+| --templates | local               | storage location for templates        |
+| --swap      | 0                   | amount of SWAP                        |
+| --os        | debian              | OS, debian or alpine                  |
+| --osversion | 12                  | debian: 11、12<br/>  alpine: 3.17、3.18 |
 
 you can set these parameters by appending ` -- <parameter> <value>` like:
 
