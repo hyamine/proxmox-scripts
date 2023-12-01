@@ -4,8 +4,15 @@ set -Eeux
 set -o pipefail
 
 RUN_LOCAL_SCRIPT=""
-CURRENT_SCRIPT_NAME="$(basename "${BASH_SOURCE[0]}")"
-CURRENT_SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" &> /dev/null && pwd)
+if [ -n "${BASH_SOURCE+set}" ]; then
+  CURRENT_SCRIPT_NAME="$(basename "${BASH_SOURCE[0]}")"
+  CURRENT_SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" &> /dev/null && pwd)
+else
+  CURRENT_SCRIPT_NAME=""
+  CURRENT_SCRIPT_DIR="/tmp/_DIR_NOT_EXISTS"
+fi
+#CURRENT_SCRIPT_NAME="$(basename "${BASH_SOURCE[0]}")"
+
 
 trap error ERR
 trap 'popd >/dev/null; echo $_temp_dir | grep "/tmp" && rm -rf $_temp_dir;' EXIT
