@@ -3,6 +3,8 @@
 set -Eeux
 set -o pipefail
 
+RUN_LOCAL_SCRIPT=""
+CURRENT_SCRIPT_NAME=$(basename "${BASH_SOURCE[0]}")
 CURRENT_SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" &> /dev/null && pwd)
 
 trap error ERR
@@ -211,7 +213,7 @@ echo "_rootfs=$_rootfs ; _storage=$_storage ; _ctid=$_ctid"
 DISTRO=$(pct exec $_ctid -- sh -c "cat /etc/*-release | grep -w ID | cut -d= -f2 | tr -d '\"'")
 EXEC_SHELL=$(pct exec 203 -- sh -c "[ -f /bin/bash ] && echo bash") || EXEC_SHELL=sh
 
-
+[ "$(echo $CURRENT_SCRIPT_NAME | grep -o '\.sh')" = ".sh" ] &&
 [ -f "${CURRENT_SCRIPT_DIR}/setup.sh" ] && \
 pct push $_ctid ${CURRENT_SCRIPT_DIR}/setup.sh /tmp/npm_setup.sh && \
 [ -f "${CURRENT_SCRIPT_DIR}/install/${DISTRO}.sh" ] && \
