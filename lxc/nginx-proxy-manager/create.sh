@@ -4,7 +4,7 @@ set -Eeux
 set -o pipefail
 
 RUN_LOCAL_SCRIPT=""
-CURRENT_SCRIPT_NAME=$(basename "${BASH_SOURCE[0]}")
+CURRENT_SCRIPT_NAME="$(basename "${BASH_SOURCE[0]}")"
 CURRENT_SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" &> /dev/null && pwd)
 
 trap error ERR
