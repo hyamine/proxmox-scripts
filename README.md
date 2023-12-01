@@ -10,7 +10,7 @@ Proxmox ve (pve) 一键脚本，
 ```bash
 wget --no-cache -qO - https://g.osspub.cn/https://raw.githubusercontent.com/hyamine/proxmox-scripts/main/lxc/nginx-proxy-manager/create.sh  \
 | bash -s -- \
---cores 4 --disksize 20G --memory 4096 --id 201 --hostname alpine-nginx \
+--cores 4 --disksize 20G --memory 4096 --id 202 --hostname alpine-nginx \
 --os debian --osversion 12
 ###或者
 curl -fsSL https://g.osspub.cn/https://raw.githubusercontent.com/hyamine/proxmox-scripts/main/lxc/nginx-proxy-manager/create.sh  \

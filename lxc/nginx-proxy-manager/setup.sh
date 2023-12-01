@@ -104,14 +104,17 @@ echo echo SET_UP_SCRIPT=$SET_UP_SCRIPT
 
 cat > $SET_UP_SCRIPT <<EOF
 #!/usr/bin/env bash
+
+set -eux
+set -o pipefail
+
 TEMPDIR=$TEMPDIR
 TEMPLOG=$TEMPLOG
 TEMPERR="$TEMPERR"
 OS_ID=$OS_ID
 OS_VERSION_ID=$OS_VERSION_ID
 OS_VERSION_CODENAME=$OS_VERSION_CODENAME
-set -eux
-set -o pipefail
+
 LASTCMD=""
 INSTALL_SCRIPT=""
 NPMURL="https://github.com/NginxProxyManager/nginx-proxy-manager"
