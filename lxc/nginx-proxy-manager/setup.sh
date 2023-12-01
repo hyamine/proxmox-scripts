@@ -1,7 +1,7 @@
 #!/usr/bin/env sh
 
 set -eux
-set -o pipefail
+#set -o pipefail
 
 SUPPORTED_OS="debian ubuntu alpine"
 CURRENT_SHELL=""
