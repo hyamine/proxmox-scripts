@@ -12,8 +12,8 @@ trapexit_clean() {
 pre_install() {
   log "Updating container OS"
   echo "fs.file-max = 65535" > /etc/sysctl.conf
-  [ -f ~/.profile ] || touch ~/.profile && chmod 0644 ~/.profile
-  #[ -f ~/.bashrc ] || touch ~/.bashrc && chmod 0644 ~/.bashrc
+  sed -i 's|root:/root:/bin/ash|root:/root:/bin/bash|' /etc/passwd
+  [ -f ~/.bashrc ] || touch ~/.bashrc && chmod 0644 ~/.bashrc
   if [ -f /etc/init.d/npm ]; then
     log "Stopping services"
     rc-service npm stop &>/dev/null
@@ -76,7 +76,7 @@ install_python3() {
   # Setup python env and PIP
   log "Setting up python"
   python3 -m venv /opt/certbot/
-  grep -qo "/opt/certbot" ~/.bashrc || echo "source /opt/certbot/bin/activate" >> ~/.profile
+  grep -qo "/opt/certbot" ~/.bashrc || echo "source /opt/certbot/bin/activate" >> ~/.bashrc
   source /opt/certbot/bin/activate
   ln -sf /opt/certbot/bin/activate /etc/profile.d/pyenv_activate.sh
   # Install certbot and python dependancies
@@ -100,6 +100,9 @@ build_NPM_frontend() {
 create_NPM_service() {
   # Create NPM service
   log "Creating NPM service"
+  [ -f /usr/local/openresty/nginx/conf/nginx.conf ] \
+  && sed -i 's|/run/nginx/nginx.pid|/usr/local/openresty/nginx/logs/nginx.pid|g' \
+  /usr/local/openresty/nginx/conf/nginx.conf
   cat << 'EOF' > /etc/init.d/npm
 #!/sbin/openrc-run
 description="Nginx Proxy Manager"
