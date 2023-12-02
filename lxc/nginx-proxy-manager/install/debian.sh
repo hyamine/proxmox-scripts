@@ -95,6 +95,10 @@ create_NPM_service() {
   [ -f /usr/lib/systemd/system/openresty.service ] \
     && sed -i 's|/usr/local/openresty/nginx/logs/nginx.pid|/run/nginx/nginx.pid|g' \
     /usr/lib/systemd/system/openresty.service
+  [ -f /etc/logrotate.d/nginx-proxy-manager ] \
+      && sed -i 's|/run/nginx.pid|/run/nginx/nginx.pid|g' \
+      /etc/logrotate.d/nginx-proxy-manager
+
   mkdir -p /run/nginx && chmod 0755 /run/nginx
 
   # Create NPM service
@@ -124,7 +128,9 @@ EOF
 start_now() {
   # Start services
   log "Starting services"
-  systemctl restart openresty
+  systemctl start openresty
+  nginx_pid="$(ps -x | grep /usr/local/openresty | grep -v grep | awk '{print $1}')"
+  [ "$nginx_pid" != "" ] && [ "$nginx_pid" != "$(cat /run/nginx/nginx.pid)" ] && echo "$nginx_pid" > /run/nginx/nginx.pid
   sleep 2
   systemctl start npm
 
