@@ -125,6 +125,7 @@ start_now() {
   # Start services
   log "Starting services"
   systemctl start openresty
+  sleep 1
   systemctl start npm
 
   IP=$(hostname -I | cut -f1 -d ' ')

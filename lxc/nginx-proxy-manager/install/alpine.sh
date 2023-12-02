@@ -147,6 +147,7 @@ start_now() {
   # Start services
   log "Starting services"
   rc-service openresty start
+  sleep 1
   rc-service npm start
   IP=$(ip a s dev eth0 | sed -n '/inet / s/\// /p' | awk '{print $2}')
   log "Installation complete
