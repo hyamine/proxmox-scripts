@@ -228,4 +228,4 @@ pct push $_ctid "${CURRENT_SCRIPT_DIR}/install/${DISTRO}.sh" /tmp/${DISTRO}_npm_
 RUN_LOCAL_SCRIPT="true" && \
 pct exec $_ctid -- $EXEC_SHELL /tmp/npm_setup.sh /tmp/${DISTRO}_npm_install.sh
 
-[ "$RUN_LOCAL_SCRIPT" != "true" ] && pct exec $_ctid -- $EXEC_SHELL -c "wget --no-cache -qO - $_raw_base/setup.sh | sh"
+[ "$RUN_LOCAL_SCRIPT" != "true" ] && pct exec $_ctid -- $EXEC_SHELL -c "wget --no-cache -qO - $_raw_base/setup.sh | $EXEC_SHELL"
