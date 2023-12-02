@@ -58,19 +58,21 @@ prepare_dep_alpine() {
   chmod 0644 ~/.bashrc
 }
 prepare_dep_debian() {
-    apt update
-    apt install -y apt-transport-https ca-certificates wget
   if [ -f "/etc/apt/sources.list.d/debian.sources" ]; then
+      apt update
+      apt install -y apt-transport-https ca-certificates wget
       sed -i 's/deb.debian.org/mirrors.ustc.edu.cn/g' /etc/apt/sources.list.d/debian.sources
       sed -i 's|security.debian.org|mirrors.ustc.edu.cn/debian-security|g' /etc/apt/sources.list.d/debian.sources
       sed -i 's/http:/https:/g' /etc/apt/sources.list.d/debian.sources
+      apt update
     else
-      sed -i 's/deb.debian.org/mirrors.ustc.edu.cn/g' /etc/apt/sources.list
-      sed -i 's|security.debian.org|mirrors.ustc.edu.cn/debian-security|g' /etc/apt/sources.list
-      sed -i 's/http:/https:/g' /etc/apt/sources.list
+      sed -i 's|deb https\?://deb.debian.org|deb [trusted=yes] https://mirrors.ustc.edu.cn|g' /etc/apt/sources.list
+      sed -i 's|deb https\?://security.debian.org|deb [trusted=yes] https://mirrors.ustc.edu.cn/debian-security|g' /etc/apt/sources.list
+      #sed -i 's/http:/https:/g' /etc/apt/sources.list
       #sed -i 's/security.debian.org/mirrors.cloud.tencent.com/g' /etc/apt/sources.list
+      apt update
+      apt install -y apt-transport-https ca-certificates wget
     fi
-    apt update
 }
 prepare_dep_ubuntu() {
   todo...
