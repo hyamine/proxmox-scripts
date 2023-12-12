@@ -4,7 +4,7 @@ set -eux
 #set -o pipefail
 
 SUPPORTED_OS="debian ubuntu alpine"
-CURRENT_SHELL=""
+CURRENT_SHELL="bash"
 INSTALL_SCRIPT=""
 OS_VERSION_CODENAME=""
 #LAST_COMMAND="$_"  # IMPORTANT: This must be the first line in the script after the shebang otherwise it will not work
@@ -163,11 +163,9 @@ install_nvm_nodejs() {
     sed 's|raw.githubusercontent.com/${NVM_GITHUB_REPO}/${NVM_VERSION}|fastly.jsdelivr.net/gh/${NVM_GITHUB_REPO}@${NVM_VERSION}|g' | \
     sed 's|NVM_SOURCE_URL="https://github.com|NVM_SOURCE_URL="https://g.osspub.cn/https://github.com|g' > $TEMPDIR/nvm_install.sh
 
-  $SCRIPT_SHELL $TEMPDIR/nvm_install.sh
-  if [ "$(command -v nvm)" = "" ]; then
-    [ -f ~/.bashrc ] && source ~/.bashrc
-    [ -f ~/.profile ] && source ~/.profile
-  fi
+  bash $TEMPDIR/nvm_install.sh
+  [ -f ~/.bashrc ] && source ~/.bashrc
+  [ -f ~/.profile ] && source ~/.profile
   nvm install 16
   npm config set registry https://registry.npmmirror.com
   npm install --force --global yarn
