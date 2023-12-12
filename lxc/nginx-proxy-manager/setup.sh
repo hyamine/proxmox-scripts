@@ -109,7 +109,7 @@ cat > $SET_UP_SCRIPT <<EOF
 
 set -eux
 set -o pipefail
-
+export TMPDIR=$TEMPDIR
 TEMPDIR=$TEMPDIR
 TEMPLOG=$TEMPLOG
 TEMPERR="$TEMPERR"
