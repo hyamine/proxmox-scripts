@@ -158,8 +158,13 @@ trapexit() {
 install_nvm_nodejs() {
   # Install nodejs
   log "Installing nodejs"
+
+  URL_INFO_API_1="https://g.osspub.cn/https://api.github.com/repos/nvm-sh/nvm/releases/latest"
+  URL_INFO_API_2="https://api.upup.cool/repo/nvm-sh/nvm/info"
+  _API_INFO="$(wget -qO - $URL_INFO_API_1 || wget -qO - URL_INFO_API_2)"
+  _latest_version=$(echo $_API_INFO | jq -r 'if .version then .version else .tag_name end')
   # shellcheck disable=SC1101
-  wget -qO-  https://fastly.jsdelivr.net/gh/nvm-sh/nvm@master/install.sh | \
+  wget -qO-  https://fastly.jsdelivr.net/gh/nvm-sh/nvm@${_latest_version}/install.sh | \
     sed 's|raw.githubusercontent.com/${NVM_GITHUB_REPO}/${NVM_VERSION}|fastly.jsdelivr.net/gh/${NVM_GITHUB_REPO}@${NVM_VERSION}|g' | \
     sed 's|NVM_SOURCE_URL="https://github.com|NVM_SOURCE_URL="https://g.osspub.cn/https://github.com|g' > $TEMPDIR/nvm_install.sh
 
