@@ -299,8 +299,8 @@ cd $TEMPDIR
 
 pre_install
 install_depend
-install_nvm_nodejs
 install_python3
+install_nvm_nodejs
 install_openresty
 download_NPM
 set_up_NPM_env
