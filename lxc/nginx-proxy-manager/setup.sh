@@ -171,7 +171,9 @@ install_nvm_nodejs() {
   bash $TEMPDIR/nvm_install.sh
   [ -f ~/.bashrc ] && source ~/.bashrc
   [ -f ~/.profile ] && source ~/.profile
+  mv /etc/alpine-release /etc/alpine-release.bak
   nvm install 16
+  mv /etc/alpine-release.bak /etc/alpine-release
   npm config set registry https://registry.npmmirror.com
   npm install --force --global yarn
 
