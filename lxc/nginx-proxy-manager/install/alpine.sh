@@ -41,7 +41,7 @@ install_depend() {
     echo id -u npm
     id -u npm > /dev/null 2>&1 || adduser npm --shell=/bin/false --no-create-home -D;
     apk upgrade
-    apk add openssl apache2-utils logrotate $DEVDEPS
+    apk add apache2-utils logrotate $DEVDEPS
     apk add -U curl bash ca-certificates ncurses coreutils grep util-linux gcompat
 }
 
