@@ -72,7 +72,7 @@ install_python3() {
   pip3 config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple/
   pip3 config set install.trusted-host pypi.tuna.tsinghua.edu.cn
   pip3 config list
-  pip3 install --upgrade pip
+  #pip3 install --upgrade pip
   # Setup python env and PIP
   log "Setting up python"
   python3 -m venv /opt/certbot/

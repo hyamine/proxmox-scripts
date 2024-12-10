@@ -55,7 +55,7 @@ install_python3() {
   source /opt/certbot/bin/activate
   grep -qo "/opt/certbot" ~/.bashrc || echo "source /opt/certbot/bin/activate" >> ~/.bashrc
   ln -sf /opt/certbot/bin/activate /etc/profile.d/pyenv_activate.sh
-  pip3 install --upgrade pip
+  #pip3 install --upgrade pip
 }
 
 install_openresty() {
