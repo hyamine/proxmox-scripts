@@ -13,8 +13,8 @@ else
 fi
 #CURRENT_SCRIPT_NAME="$(basename "${BASH_SOURCE[0]}")"
 
-trap error ERR
-trap 'popd >/dev/null; echo $_temp_dir | grep "/tmp" && rm -rf $_temp_dir;' EXIT
+#trap error ERR
+#trap 'popd >/dev/null; echo $_temp_dir | grep "/tmp" && rm -rf $_temp_dir;' EXIT
 
 function info { echo -e "\e[32m[info] $*\e[39m"; }
 function warn { echo -e "\e[33m[warn] $*\e[39m"; }
