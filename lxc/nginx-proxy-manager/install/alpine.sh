@@ -85,7 +85,7 @@ install_python3() {
   ln -sf /opt/certbot/bin/activate /etc/profile.d/pyenv_activate.sh
   # Install certbot and python dependancies
   #pip3 install --no-cache-dir -U cryptography==3.3.2
-  pip3 install --no-cache-dir -U cryptography
+  #pip3 install --no-cache-dir -U cryptography
   pip3 install --no-cache-dir cffi certbot
 }
 
