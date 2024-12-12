@@ -6,10 +6,10 @@ DEVDEPS="git build-essential libffi-dev libssl-dev python3-dev"
 export DEBIAN_FRONTEND=noninteractive
 
 # Helpers
-log() { 
-  logs=$(cat $TEMPLOG | sed -e "s/34/32/g" | sed -e "s/info/success/g");
+log() {
+  logs=$(cat $TEMPLOG | sed -e "s/34/32/g" | sed -e "s/info/success/g")
   #clear && printf "\033c\e[3J$logs\n\e[34m[info] $*\e[0m\n" | tee $TEMPLOG;
-  printf "\033c\e[3J$logs\n\e[34m[info] $*\e[0m\n" | tee $TEMPLOG;
+  printf "\033c\e[3J$logs\n\e[34m[info] $*\e[0m\n" | tee $TEMPLOG
 }
 
 trapexit_clean() {
@@ -28,11 +28,11 @@ pre_install() {
     # Cleanup for new install
     log "Cleaning old files"
     rm -rf /app \
-    /var/www/html \
-    /etc/nginx \
-    /var/log/nginx \
-    /var/lib/nginx \
-    /var/cache/nginx &>/dev/null
+      /var/www/html \
+      /etc/nginx \
+      /var/log/nginx \
+      /var/lib/nginx \
+      /var/cache/nginx &>/dev/null
   fi
 }
 install_depend() {
@@ -46,14 +46,15 @@ install_depend() {
 install_python3() {
   # Install Python
   log "Installing python"
-  apt install -y -q --no-install-recommends python3 python3-distutils python3-venv python3-pip
+  #apt install -y -q --no-install-recommends python3 python3-distutils python3-venv python3-pip
+  apt install -y -q --no-install-recommends python3 python3-setuptools python3-venv python3-pip
   pip3 config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple/
   pip3 config set install.trusted-host pypi.tuna.tsinghua.edu.cn
   pip3 config list
   python3 -m venv /opt/certbot/
   #export PATH=/opt/certbot/bin:$PATH
   source /opt/certbot/bin/activate
-  grep -qo "/opt/certbot" ~/.bashrc || echo "source /opt/certbot/bin/activate" >> ~/.bashrc
+  grep -qo "/opt/certbot" ~/.bashrc || echo "source /opt/certbot/bin/activate" >>~/.bashrc
   ln -sf /opt/certbot/bin/activate /etc/profile.d/pyenv_activate.sh
   pip3 install --upgrade pip
 }
@@ -61,7 +62,7 @@ install_python3() {
 install_openresty() {
   OPENRESTY_REP_PREFIX="https://mirrors.ustc.edu.cn/openresty"
   if [ "$(getconf LONG_BIT)" = "32" ]; then
-  pip install --no-cache-dir -U cryptography==3.3.2
+    pip install --no-cache-dir -U cryptography==3.3.2
   fi
   pip install --no-cache-dir cffi certbot
 
@@ -92,18 +93,18 @@ build_NPM_frontend() {
 }
 
 create_NPM_service() {
-  [ -f /usr/lib/systemd/system/openresty.service ] \
-    && sed -i 's|/usr/local/openresty/nginx/logs/nginx.pid|/run/nginx/nginx.pid|g' \
-    /usr/lib/systemd/system/openresty.service
-  [ -f /etc/logrotate.d/nginx-proxy-manager ] \
-      && sed -i 's|/run/nginx.pid|/run/nginx/nginx.pid|g' \
+  [ -f /usr/lib/systemd/system/openresty.service ] &&
+    sed -i 's|/usr/local/openresty/nginx/logs/nginx.pid|/run/nginx/nginx.pid|g' \
+      /usr/lib/systemd/system/openresty.service
+  [ -f /etc/logrotate.d/nginx-proxy-manager ] &&
+    sed -i 's|/run/nginx.pid|/run/nginx/nginx.pid|g' \
       /etc/logrotate.d/nginx-proxy-manager
 
   mkdir -p /run/nginx && chmod 0755 /run/nginx
 
   # Create NPM service
   log "Creating NPM service"
-  cat << 'EOF' > /lib/systemd/system/npm.service
+  cat <<'EOF' >/lib/systemd/system/npm.service
 [Unit]
 Description=Nginx Proxy Manager
 After=network.target
@@ -120,7 +121,8 @@ Restart=on-failure
 [Install]
 WantedBy=multi-user.target
 EOF
-  adduser npm --shell=/bin/false --no-create-home
+  #adduser npm --shell=/bin/false --no-create-home
+  useradd -U --shell=/bin/false --no-create-home npm
   systemctl daemon-reload
   systemctl enable npm
 }
@@ -130,7 +132,7 @@ start_now() {
   log "Starting services"
   systemctl start openresty
   nginx_pid="$(ps -x | grep /usr/local/openresty | grep -v grep | awk '{print $1}')"
-  [ "$nginx_pid" != "" ] && [ "$nginx_pid" != "$(cat /run/nginx/nginx.pid)" ] && echo "$nginx_pid" > /run/nginx/nginx.pid
+  [ "$nginx_pid" != "" ] && [ "$nginx_pid" != "$(cat /run/nginx/nginx.pid)" ] && echo "$nginx_pid" >/run/nginx/nginx.pid
   sleep 2
   systemctl start npm
 

@@ -159,8 +159,8 @@ install_nvm_nodejs() {
   # Install nodejs
   log "Installing nodejs"
 
-  #URL_INFO_API_1="https://g.osspub.cn/https://api.github.com/repos/nvm-sh/nvm/releases/latest"
-  URL_INFO_API_1="https://api.upup.cool/repo/nvm-sh/nvm/info"
+  URL_INFO_API_1="https://g.osspub.cn/https://api.github.com/repos/nvm-sh/nvm/releases/latest"
+  URL_INFO_API_2="https://api.upup.cool/repo/nvm-sh/nvm/info"
   #_API_INFO="$(wget -qO - $URL_INFO_API_1 || wget -qO - URL_INFO_API_2)"
   _API_INFO="$(wget -qO - $URL_INFO_API_1)"
   _latest_version=$(echo $_API_INFO | jq -r 'if .version then .version else .tag_name end')
@@ -172,9 +172,9 @@ install_nvm_nodejs() {
   bash $TEMPDIR/nvm_install.sh
   [ -f ~/.bashrc ] && source ~/.bashrc
   [ -f ~/.profile ] && source ~/.profile
-  mv /etc/alpine-release /etc/alpine-release.bak
+  [ -f /etc/alpine-release ] && mv /etc/alpine-release /etc/alpine-release.bak
   nvm install 16
-  mv /etc/alpine-release.bak /etc/alpine-release
+  [ -f /etc/alpine-release.bak ] && mv /etc/alpine-release.bak /etc/alpine-release
   npm config set registry https://registry.npmmirror.com
   npm install --force --global yarn
 
@@ -218,8 +218,8 @@ set_up_NPM_env() {
   ln -sf /usr/local/openresty/nginx/ /etc/nginx
 
   # Update NPM version in package.json files
-  sed -i "s+0.0.0+$_latest_version+g" backend/package.json
-  sed -i "s+0.0.0+$_latest_version+g" frontend/package.json
+  sed -i "s+\"0.0.0\"+\"$_latest_version\"+g" backend/package.json
+  sed -i "s+\"0.0.0\"+\"$_latest_version\"+g" frontend/package.json
   sed -i 's|https://github.com/tabler|https://g.osspub.cn/https://github.com/tabler|g' frontend/package.json
 
   # Fix nginx config files for use with openresty defaults
