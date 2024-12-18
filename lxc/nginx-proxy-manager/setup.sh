@@ -229,9 +229,10 @@ set_up_NPM_env() {
   done
 
   # Copy runtime files
-  mkdir -p /var/www/html /etc/nginx/logs
-  cp -r docker/rootfs/var/www/html/* /var/www/html/
-  cp -r docker/rootfs/etc/nginx/* /etc/nginx/
+  mkdir -p /var/www/html
+  mkdir -p /etc/nginx/logs
+  cp -rf docker/rootfs/var/www/html/* /var/www/html/
+  cp -rf docker/rootfs/etc/nginx/* /etc/nginx/
   cp docker/rootfs/etc/letsencrypt.ini /etc/letsencrypt.ini
   cp docker/rootfs/etc/logrotate.d/nginx-proxy-manager /etc/logrotate.d/nginx-proxy-manager
   ln -sf /etc/nginx/nginx.conf /etc/nginx/conf/nginx.conf
