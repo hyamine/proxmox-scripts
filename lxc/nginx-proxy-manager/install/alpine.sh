@@ -68,7 +68,7 @@ install_openresty() {
   cat alpine/Dockerfile | sed 's/^\(ARG \|LABEL \|RUN \|FROM \)//g' | sed '/^\(CMD \|STOPSIGNAL \|#\).*/d' | \
   sed 's|https://raw.githubusercontent.com/|https://g.osspub.cn/https://raw.githubusercontent.com/|g' | \
   sed 's|https://github.com/|https://g.osspub.cn/https://github.com/|g' | \
-  sed 's/^ENV \(.*\)$/echo "\1" > ~\/.bashrc/g' | sed 's|^COPY nginx|cp \$CURRENT_DIR_PATH/nginx|g' | sed '/^$/d' \
+  sed 's/^ENV \(.*\)$/echo "\1" > ~\/.bashrc/g' | sed 's|^COPY nginx|cp \$CURRENT_DIR_PATH/nginx|g' | sed '/^$/d' | \
   sed 's|^RESTY_J=.*|RESTY_J=\$CPU_CORE_COUNT|' \
   >> ./build_openresty.sh
   chmod u+x ./build_openresty.sh
