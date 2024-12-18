@@ -66,7 +66,7 @@ install_openresty() {
   echo '#!/bin/bash' > ./build_openresty.sh
   echo "CURRENT_DIR_PATH=$(pwd)" >> ./build_openresty.sh
   echo "CPU_CORE_COUNT=$CPU_CORE_COUNT" >> ./build_openresty.sh
-  cat alpine/Dockerfile | sed 's/^\(ARG \|LABEL \|RUN \|FROM \)//g' | sed '/^\(CMD \|STOPSIGNAL \|#\).*/d' | \
+  cat alpine/Dockerfile | sed 's/^\(ARG \|LABEL \|RUN \)//g' | sed '/^\(CMD \|STOPSIGNAL \|FROM \|#\).*/d' | \
   sed 's|https://raw.githubusercontent.com/|https://g.osspub.cn/https://raw.githubusercontent.com/|g' | \
   sed 's|https://github.com/|https://g.osspub.cn/https://github.com/|g' | \
   sed 's/^ENV \(.*\)$/echo "\1" > ~\/.bashrc/g' | sed '/^COPY nginx.*/d' | sed '/^$/d' | \
