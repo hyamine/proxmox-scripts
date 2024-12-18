@@ -230,6 +230,8 @@ set_up_NPM_env() {
 
   # Copy runtime files
   mkdir -p /var/www/html
+
+  exit
   mkdir -p /etc/nginx/logs
   cp -rf docker/rootfs/var/www/html/* /var/www/html/
   cp -rf docker/rootfs/etc/nginx/* /etc/nginx/
