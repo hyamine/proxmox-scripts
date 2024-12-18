@@ -56,6 +56,7 @@ install_nodejs() {
 
 install_openresty() {
   log "install openresty..."
+  sed -i '1s/^/nameserver 8.8.8.8\n/' /etc/resolv.conf
   CPU_CORE_COUNT=$([ -e '/proc/cpuinfo' ] && \
   grep processor /proc/cpuinfo | wc -l || \
   sysctl -n machdep.cpu.core_count)
@@ -72,7 +73,7 @@ install_openresty() {
   sed 's|^RESTY_J=.*|RESTY_J=\$CPU_CORE_COUNT|' \
   >> ./build_openresty.sh
   chmod u+x ./build_openresty.sh
-  exit
+  bash ./build_openresty.sh
 }
 
 install_openresty_old() {
