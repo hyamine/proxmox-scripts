@@ -55,6 +55,27 @@ install_nodejs() {
 }
 
 install_openresty() {
+  log "install openresty..."
+  CPU_CORE_COUNT=$([ -e '/proc/cpuinfo' ] && \
+  grep processor /proc/cpuinfo | wc -l || \
+  sysctl -n machdep.cpu.core_count)
+  cd
+  git clone https://g.osspub.cn/https://github.com/openresty/docker-openresty.git
+  cd docker-openresty
+  echo '#!/bin/bash' > ./build_openresty.sh
+  echo "CURRENT_DIR_PATH=$(pwd)" >> ./build_openresty.sh
+  echo "CPU_CORE_COUNT=$CPU_CORE_COUNT" >> ./build_openresty.sh
+  cat alpine/Dockerfile | sed 's/^\(ARG \|LABEL \|RUN \|FROM \)//g' | sed '/^\(CMD \|STOPSIGNAL \|#\).*/d' | \
+  sed 's|https://raw.githubusercontent.com/|https://g.osspub.cn/https://raw.githubusercontent.com/|g' | \
+  sed 's|https://github.com/|https://g.osspub.cn/https://github.com/|g' | \
+  sed 's/^ENV \(.*\)$/echo "\1" > ~\/.bashrc/g' | sed 's|^COPY nginx|cp \$CURRENT_DIR_PATH/nginx|g' | sed '/^$/d' \
+  sed 's|^RESTY_J=.*|RESTY_J=$CPU_CORE_COUNT'
+  >> ./build_openresty.sh
+  chmod u+x ./build_openresty.sh
+  exit
+}
+
+install_openresty_old() {
   OPENRESTY_REP_PREFIX="https://mirrors.ustc.edu.cn/openresty"
   log "Checking for latest openresty repository"
   ALPINE_MAJOR_VER=$(echo $OS_VERSION_ID | sed 's/\.[0-9]\+$//')
