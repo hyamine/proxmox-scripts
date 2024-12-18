@@ -60,7 +60,7 @@ install_openresty() {
   CPU_CORE_COUNT=$([ -e '/proc/cpuinfo' ] && \
   grep processor /proc/cpuinfo | wc -l || \
   sysctl -n machdep.cpu.core_count)
-  cd
+  cd $TEMPDIR
   git clone https://g.osspub.cn/https://github.com/openresty/docker-openresty.git
   cd docker-openresty
   echo '#!/bin/bash' > ./build_openresty.sh
