@@ -250,7 +250,7 @@ prepare_dep_alpine() {
   retry 'pct_run "apk update && apk add -U wget bash"'
   pct_run "touch ~/.bashrc && chmod 0644 ~/.bashrc"
 }
-prepare_dep_debian {
+prepare_dep_debian() {
   echo 'prepare_dep_debian'
 }
 
