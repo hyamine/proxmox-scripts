@@ -243,14 +243,14 @@ function retry {
   return 0
 }
 
-pct_run() {
-  pct exec $_ctid -- $EXEC_SHELL -c "$@"
-}
+
+pct_run="pct exec $_ctid -- $EXEC_SHELL -c"
+
 
 prepare_dep_alpine() {
-  pct_run "sed -i 's/dl-cdn.alpinelinux.org/mirrors.tuna.tsinghua.edu.cn/g' /etc/apk/repositories"
-  retry 'pct_run "apk update && apk add -U wget bash"'
-  pct_run "touch ~/.bashrc && chmod 0644 ~/.bashrc"
+  $pct_run "sed -i 's/dl-cdn.alpinelinux.org/mirrors.tuna.tsinghua.edu.cn/g' /etc/apk/repositories"
+  retry "$pct_run 'apk update && apk add -U wget bash'
+  $pct_run "touch ~/.bashrc && chmod 0644 ~/.bashrc"
 }
 prepare_dep_debian() {
   echo 'prepare_dep_debian'
