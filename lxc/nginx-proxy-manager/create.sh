@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 
-set -Eeux
+
+#set -Eeux
+set -u
 set -o pipefail
 
 RUN_LOCAL_SCRIPT=""
