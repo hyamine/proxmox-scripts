@@ -182,6 +182,7 @@ __step_error=""
 function retry {
   let CURRENT_INSTALL_STEP++
   if [ $CURRENT_INSTALL_STEP -gt $PRE_INSTALL_STEP ]; then
+    info "run step:  $CURRENT_INSTALL_STEP"
   [ -n "$__step_info" ] && info "$__step_info"
   local count=0
   echo "$@"
@@ -212,6 +213,7 @@ function pct_run() {
 function run_step() {
   let CURRENT_INSTALL_STEP++
   if [ $CURRENT_INSTALL_STEP -gt $PRE_INSTALL_STEP ]; then
+    info "run step:  $CURRENT_INSTALL_STEP"
     [ -z "$__step_error" ] && __step_error="Execute error: $*"
     [ -n "$__step_info" ] && info "$__step_info"
     "$@" || exit_with_error "$__step_error"
