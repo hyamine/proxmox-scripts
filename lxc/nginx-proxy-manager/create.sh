@@ -176,6 +176,8 @@ function exit_with_error() {
 }
 
 _retries=5
+__step_info=""
+__step_error=""
 
 function retry {
   let CURRENT_INSTALL_STEP++
