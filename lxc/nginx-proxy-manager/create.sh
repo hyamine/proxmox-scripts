@@ -15,12 +15,12 @@ else
 fi
 #CURRENT_SCRIPT_NAME="$(basename "${BASH_SOURCE[0]}")"
 
-#trap error ERR
+#trap _error ERR
 #trap 'popd >/dev/null; echo $_temp_dir | grep "/tmp" && rm -rf $_temp_dir;' EXIT
 
 function info { echo -e "\e[32m[info] $*\e[39m"; }
 function warn { echo -e "\e[33m[warn] $*\e[39m"; }
-function error {
+function _error {
   trap - ERR
 
   if [ -z "${1-}" ]; then
@@ -30,7 +30,7 @@ function error {
   fi
 
   if [[ -n ${_ctid-} ]]; then
-    if $(pct status $_ctid &>/dev/null); then
+    if pct status $_ctid &>/dev/null; then
       if [ "$(pct status $_ctid 2>/dev/null | awk '{print $2}')" == "running" ]; then
         pct stop $_ctid &>/dev/null
       fi
@@ -54,7 +54,7 @@ _arch=$(dpkg --print-architecture)
 _cn_mirrors=true
 # Create temp working directory
 _temp_dir=$(mktemp -d)
-pushd "$_temp_dir" >/dev/null
+pushd "$_temp_dir" >/dev/null || exit
 
 # Parse command line parameters
 while [[ $# -gt 0 ]]; do
@@ -106,7 +106,7 @@ while [[ $# -gt 0 ]]; do
     shift
     ;;
   --cn-mirrors)
-    "$2" == "disable" && _cn_mirrors=false
+    [ "$2" == "disable" ] && _cn_mirrors=false
     shift
     ;;
   *)
@@ -134,6 +134,91 @@ if pct status $_ctid &>/dev/null; then
   error "Cannot use ID that is already in use."
 fi
 
+let PRE_INSTALL_STEP=0
+let CURRENT_INSTALL_STEP=0
+USER_HOME=${HOME} || ~
+LXC_INSTALL_STEP_FILE="${USER_HOME}/.${_os_type}__${_os_version}_INSTALL_STEP"
+
+if [ -f  "${LXC_INSTALL_STEP_FILE}" ]; then
+    let PRE_INSTALL_STEP=$(cat "${LXC_INSTALL_STEP_FILE}" | grep "INSTALL_STEP" | awk -F "=" '{print $2}')
+    PRE_LXC_ID=$(cat "${LXC_INSTALL_STEP_FILE}" | grep "_ctid" | awk -F "=" '{print $2}')
+    # shellcheck source=${USER_HOME}/.${_os_type}__${_os_version}_INSTALL_STEP
+    pct status $PRE_LXC_ID >/dev/null 2>&1 && . "${LXC_INSTALL_STEP_FILE}"
+fi
+
+function save_step() {
+    if [ "$1" != "" ] && [ $1 -gt $PRE_INSTALL_STEP ]; then
+      if [ "$1" == "1" ]; then
+        cat > $LXC_INSTALL_STEP_FILE <<- EOF
+_os_type=$_os_type
+_os_version=$_os_version
+_ctid=${_ctid}
+_cpu_cores=${_cpu_cores}
+_disk_size=${_disk_size}
+_host_name=${_host_name}
+_bridge=${_bridge}
+_memory=${_memory}
+_swap=${_swap}
+_storage=${_storage}
+_storage_template=${_storage_template}
+_template=${_template}
+INSTALL_STEP=$1
+EOF
+      else
+        sed -i  "s|INSTALL_STEP=.*|INSTALL_STEP=$1|" $LXC_INSTALL_STEP_FILE
+      fi
+    fi
+}
+
+function exit_with_error() {
+    echo -e "\033[31m Error: $* \033[0m"  >&2
+    exit $CURRENT_INSTALL_STEP
+}
+
+_retries=5
+
+function retry {
+  let CURRENT_INSTALL_STEP++
+  if [ $CURRENT_INSTALL_STEP -gt $PRE_INSTALL_STEP ]; then
+  [ -n "$__step_info" ] && info "$__step_info"
+  local count=0
+  echo "$@"
+  until "$@"; do
+    exit=$?
+    wait=$((2 ** $count))
+    count=$(($count + 1))
+    if [ $count -lt $_retries ]; then
+      echo "Retry $count/$_retries exited $exit, retrying in $wait seconds..."
+      sleep $wait
+    else
+      echo "Retry $count/$retries exited $exit, no more retries left."
+      [ -n "$__step_error" ] && info "$__step_error"
+      exit $exit
+    fi
+  done
+  save_step $CURRENT_INSTALL_STEP
+  fi
+  __step_info=""
+  __step_error=""
+  return 0
+}
+
+function pct_run() {
+    pct exec $_ctid -- $EXEC_SHELL -c "$@"
+}
+
+function run_step() {
+  let CURRENT_INSTALL_STEP++
+  if [ $CURRENT_INSTALL_STEP -gt $PRE_INSTALL_STEP ]; then
+    [ -z "$__step_error" ] && __step_error="Execute error: $*"
+    [ -n "$__step_info" ] && info "$__step_info"
+    "$@" || exit_with_error "$__step_error"
+    save_step $CURRENT_INSTALL_STEP
+  fi
+  __step_info=""
+  __step_error=""
+  return 0
+}
 echo ""
 warn "Container will be created using the following settings."
 warn ""
@@ -152,18 +237,21 @@ echo ""
 
 sleep 5
 
-# Download latest Alpine LXC template
-info "Updating LXC template list..."
-pveam update &>/dev/null
+function get_template_name() {
+  __step_info="check LXC template name..."
+  __step_error="No LXC template found for $_os_type-$_os_version"
+  pveam update &>/dev/null || return 1
+   mapfile -t _templates < <(pveam available -section system | sed -n "s/.*\($_os_type-$_os_version.*\)/\1/p" | sort -t - -k 2 -V)
+  [ ${#_templates[@]} -eq 0 ] && return 1
+  _template="${_templates[-1]}"
+  return 0
+}
 
-info "Downloading LXC template..."
-mapfile -t _templates < <(pveam available -section system | sed -n "s/.*\($_os_type-$_os_version.*\)/\1/p" | sort -t - -k 2 -V)
-[ ${#_templates[@]} -eq 0 ] &&
-  error "No LXC template found for $_os_type-$_os_version"
+retry get_template_name
 
-_template="${_templates[-1]}"
-pveam download $_storage_template $_template &>/dev/null ||
-  error "A problem occured while downloading the LXC template."
+__step_info="Downloading LXC template..."
+__step_error="A problem occured while downloading the LXC template."
+retry pveam download $_storage_template $_template &>/dev/null
 
 # Create variables for container disk
 _storage_type=$(pvesm status -storage $_storage 2>/dev/null | awk 'NR>1 {print $2}')
@@ -181,40 +269,48 @@ _disk=${_disk_prefix:-vm}-${_ctid}-disk-0${_disk_ext-}
 _rootfs=${_storage}:${_disk_ref-}${_disk}
 
 # Create LXC
-info "Allocating storage for LXC container..."
-pvesm alloc $_storage $_ctid $_disk $_disk_size --format ${_disk_format:-raw} &>/dev/null ||
-  error "A problem occured while allocating storage."
+__step_info="Allocating storage for LXC container..."
+__step_error="A problem occured while allocating storage."
+run_step pvesm alloc $_storage $_ctid $_disk $_disk_size --format ${_disk_format:-raw} &>/dev/null
 
-if [ "$_storage_type" = "zfspool" ]; then
-  warn "Some containers may not work properly due to ZFS not supporting 'fallocate'."
-else
-  mkfs.ext4 $(pvesm path $_rootfs) &>/dev/null
-fi
+function format_rootfs() {
+  if [ "$_storage_type" = "zfspool" ]; then
+    warn "Some containers may not work properly due to ZFS not supporting 'fallocate'."
+  else
+    mkfs.ext4 "$(pvesm path $_rootfs)" &>/dev/null
+  fi
+}
+run_step format_rootfs
 
-info "Creating LXC container..."
 _pct_options=(
-  -arch $_arch
-  -cmode shell
-  -hostname $_host_name
-  -cores $_cpu_cores
-  -memory $_memory
-  -net0 name=eth0,bridge=$_bridge,ip=dhcp
-  -onboot 1
-  -ostype $_os_type
-  -rootfs $_rootfs,size=$_disk_size
-  -storage $_storage
-  -swap $_swap
-  -tags npm
-  -timezone host
+"-arch" "$_arch"
+"-cmode" "shell"
+"-hostname" "$_host_name"
+"-cores" "$_cpu_cores"
+"-memory" "$_memory"
+"-net0" "name=eth0,bridge=$_bridge,ip=dhcp"
+"-onboot" "1"
+"-ostype" "$_os_type"
+"-rootfs" "$_rootfs,size=$_disk_size"
+"-storage" "$_storage"
+"-swap" "$_swap"
+"-tags" "npm"
+"-timezone" "host"
 )
-pct create $_ctid "$_storage_template:vztmpl/$_template" ${_pct_options[@]} &>/dev/null ||
-  error "A problem occured while creating LXC container."
+__step_info="Creating LXC container..."
+__step_error="A problem occured while creating LXC container."
+run_step pct create $_ctid "$_storage_template:vztmpl/$_template" "${_pct_options[@]}" &>/dev/null
 
+setup_timezone() {
 # Set container timezone to match host
 cat <<'EOF' >>/etc/pve/lxc/${_ctid}.conf
 lxc.hook.mount: sh -c 'ln -fs $(readlink /etc/localtime) ${LXC_ROOTFS_MOUNT}/etc/localtime'
 EOF
+return $?
+}
+run_step setup_timezone
 
+exit
 # Setup container
 info "Setting up LXC container..."
 pct start $_ctid
@@ -222,44 +318,20 @@ sleep 5
 echo "rootfs=$_rootfs ; storage=$_storage ; ctid=$_ctid"
 
 DISTRO=$(pct exec $_ctid -- sh -c "cat /etc/*-release | grep -w ID | cut -d= -f2 | tr -d '\"'")
-EXEC_SHELL=$(pct exec $_ctid -- sh -c "[ -f /bin/bash ] && echo bash") || EXEC_SHELL=sh
-
-_retries=3
-
-function retry {
-  local count=0
-  echo "$@"
-  until "$@"; do
-    exit=$?
-    wait=$((2 ** $count))
-    count=$(($count + 1))
-    if [ $count -lt $_retries ]; then
-      echo "Retry $count/$_retries exited $exit, retrying in $wait seconds..."
-      sleep $wait
-    else
-      echo "Retry $count/$retries exited $exit, no more retries left."
-      exit $exit
-    fi
-  done
-  return 0
-}
-
-
-pct_run="pct exec $_ctid -- $EXEC_SHELL -c"
+EXEC_SHELL=$(pct exec $_ctid -- sh -c "[ -f /bin/bash ] && echo bash") || EXEC_SHELL="sh"
 
 
 prepare_dep_alpine() {
-  $pct_run "sed -i 's/dl-cdn.alpinelinux.org/mirrors.tuna.tsinghua.edu.cn/g' /etc/apk/repositories"
-  retry $pct_run "apk update && apk add -U wget bash"
-  $pct_run "touch ~/.bashrc && chmod 0644 ~/.bashrc"
+  pct_run "sed -i 's/dl-cdn.alpinelinux.org/mirrors.tuna.tsinghua.edu.cn/g' /etc/apk/repositories"
+  retry pct_run "apk update && apk add -U wget bash"
+  pct_run "touch ~/.bashrc && chmod 0644 ~/.bashrc"
+  EXEC_SHELL=$(pct exec $_ctid -- sh -c "[ -f /bin/bash ] && echo bash") || EXEC_SHELL="sh"
 }
 prepare_dep_debian() {
   echo 'prepare_dep_debian'
 }
 
 prepare_dep_${_os_type}
-
-exit
 
 [ "$(echo $CURRENT_SCRIPT_NAME | grep -o '\.sh')" = ".sh" ] &&
   [ -f "${CURRENT_SCRIPT_DIR}/setup.sh" ] &&
