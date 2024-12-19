@@ -181,9 +181,9 @@ __step_error=""
 
 function retry {
   let CURRENT_INSTALL_STEP++
-  info "run: $@"
+  info "retry run: $@"
   if [ $CURRENT_INSTALL_STEP -gt $PRE_INSTALL_STEP ]; then
-  info "run step:  $CURRENT_INSTALL_STEP"
+  info "retry run step:  $CURRENT_INSTALL_STEP"
   [ -n "$__step_info" ] && info "$__step_info"
   local count=0
   until "$@"; do
@@ -212,9 +212,9 @@ function pct_run() {
 
 function run_step() {
   let CURRENT_INSTALL_STEP++
-  info "run: $@"
+  info "step run: $@"
   if [ $CURRENT_INSTALL_STEP -gt $PRE_INSTALL_STEP ]; then
-    info "run step:  $CURRENT_INSTALL_STEP"
+    info "step run step:  $CURRENT_INSTALL_STEP"
     [ -n "$__step_info" ] && info "$__step_info"
     [ -z "$__step_error" ] && __step_error="Execute error: $*"
     "$@" || exit_with_error "$__step_error"
@@ -256,7 +256,7 @@ retry get_template_name
 
 __step_info="Downloading LXC template..."
 __step_error="A problem occured while downloading the LXC template."
-retry pveam download $_storage_template $_template &>/dev/null
+retry pveam download $_storage_template $_template
 
 # Create variables for container disk
 _storage_type=$(pvesm status -storage $_storage 2>/dev/null | awk 'NR>1 {print $2}')
@@ -276,7 +276,7 @@ _rootfs=${_storage}:${_disk_ref-}${_disk}
 # Create LXC
 __step_info="Allocating storage for LXC container..."
 __step_error="A problem occured while allocating storage."
-run_step pvesm alloc $_storage $_ctid $_disk $_disk_size --format ${_disk_format:-raw} &>/dev/null
+run_step pvesm alloc $_storage $_ctid $_disk $_disk_size --format ${_disk_format:-raw}
 
 function format_rootfs() {
   if [ "$_storage_type" = "zfspool" ]; then
