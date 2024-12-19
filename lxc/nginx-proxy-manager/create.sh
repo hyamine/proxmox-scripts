@@ -282,7 +282,7 @@ function format_rootfs() {
   if [ "$_storage_type" = "zfspool" ]; then
     warn "Some containers may not work properly due to ZFS not supporting 'fallocate'."
   else
-    mkfs.ext4 "$(pvesm path $_rootfs)" &>/dev/null
+    mkfs.ext4 "$(pvesm path $_rootfs)"
   fi
 }
 run_step format_rootfs
@@ -304,7 +304,7 @@ _pct_options=(
 )
 __step_info="Creating LXC container..."
 __step_error="A problem occured while creating LXC container."
-run_step pct create $_ctid "$_storage_template:vztmpl/$_template" "${_pct_options[@]}" &>/dev/null
+run_step pct create $_ctid "$_storage_template:vztmpl/$_template" "${_pct_options[@]}"
 
 setup_timezone() {
 # Set container timezone to match host
