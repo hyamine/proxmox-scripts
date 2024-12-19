@@ -50,13 +50,7 @@ check_support() {
   fi
 
 }
-prepare_dep_alpine() {
-  sed -i 's/dl-cdn.alpinelinux.org/mirrors.tuna.tsinghua.edu.cn/g' /etc/apk/repositories
-  apk update
-  apk add -U wget bash
-  touch ~/.bashrc
-  chmod 0644 ~/.bashrc
-}
+
 prepare_dep_debian() {
   if [ -f "/etc/apt/sources.list.d/debian.sources" ]; then
       apt update

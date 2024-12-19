@@ -49,7 +49,7 @@ _os_type=debian
 _os_version=12
 # System architecture
 _arch=$(dpkg --print-architecture)
-
+_cn_mirrors=true
 # Create temp working directory
 _temp_dir=$(mktemp -d)
 pushd "$_temp_dir" >/dev/null
@@ -101,6 +101,10 @@ while [[ $# -gt 0 ]]; do
     ;;
   --swap)
     _swap=$2
+    shift
+    ;;
+  --cn-mirrors)
+    "$2" == "disable" && _cn_mirrors=false
     shift
     ;;
   *)
@@ -213,11 +217,46 @@ EOF
 info "Setting up LXC container..."
 pct start $_ctid
 sleep 5
-
-echo "_rootfs=$_rootfs ; _storage=$_storage ; _ctid=$_ctid"
+echo "rootfs=$_rootfs ; storage=$_storage ; ctid=$_ctid"
 
 DISTRO=$(pct exec $_ctid -- sh -c "cat /etc/*-release | grep -w ID | cut -d= -f2 | tr -d '\"'")
 EXEC_SHELL=$(pct exec $_ctid -- sh -c "[ -f /bin/bash ] && echo bash") || EXEC_SHELL=sh
+
+_retries=3
+
+function retry {
+  local count=0
+  until "$@"; do
+    exit=$?
+    wait=$((2 ** $count))
+    count=$(($count + 1))
+    if [ $count -lt $_retries ]; then
+      echo "Retry $count/$_retries exited $exit, retrying in $wait seconds..."
+      sleep $wait
+    else
+      echo "Retry $count/$retries exited $exit, no more retries left."
+      exit $exit
+    fi
+  done
+  return 0
+}
+
+pct_run() {
+  pct exec $_ctid -- $EXEC_SHELL -c "$@"
+}
+
+prepare_dep_alpine() {
+  pct_run "sed -i 's/dl-cdn.alpinelinux.org/mirrors.tuna.tsinghua.edu.cn/g' /etc/apk/repositories"
+  retry 'pct_run "apk update && apk add -U wget bash"'
+  pct_run "touch ~/.bashrc && chmod 0644 ~/.bashrc"
+}
+prepare_dep_debian {
+  echo 'prepare_dep_debian'
+}
+
+prepare_dep_${_os_type}
+
+exit
 
 [ "$(echo $CURRENT_SCRIPT_NAME | grep -o '\.sh')" = ".sh" ] &&
   [ -f "${CURRENT_SCRIPT_DIR}/setup.sh" ] &&
