@@ -265,7 +265,7 @@ if [ "$_host_shell" = "true" ]; then
 
   retry get_template_name
   [ -n "${_template+set}" ] ||
-    (rm -f "${LXC_INSTALL_STEP_FILE}" && ((CURRENT_INSTALL_STEP--)) && echo "CURRENT_INSTALL_STEP=$CURRENT_INSTALL_STEP" && retry get_template_name)
+    (rm -f "${LXC_INSTALL_STEP_FILE}" && get_template_name)
 
   __step_info="Downloading LXC template..."
   __step_error="A problem occured while downloading the LXC template."
