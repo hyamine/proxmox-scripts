@@ -376,7 +376,7 @@ EOF
 
   retry push_install_file
 
-  retry pct exec $_ctid -- $EXEC_SHELL "$EXEC_SHELL -- $LXC_SETUP_FILE --host-shell false --cn-mirrors false"
+  retry pct exec $_ctid -- $EXEC_SHELL -c "$EXEC_SHELL -- $LXC_SETUP_FILE --host-shell false --cn-mirrors false"
 else
   ### run on lxc container
   echo "mirrors: $__cn_mirrors, host: $_host_shell"
