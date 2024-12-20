@@ -400,5 +400,5 @@ else
   # Create temp working directory
   #_temp_dir=$(mktemp -d)
   #pushd "$_temp_dir" >/dev/null || exit
-  echo "mirrors: $__cn_mirrors, host: $_host_shell"
+  echo "mirrors: $_cn_mirrors, host: $_host_shell"
 fi
