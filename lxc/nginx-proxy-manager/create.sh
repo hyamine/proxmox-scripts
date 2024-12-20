@@ -395,7 +395,7 @@ EOF
       "--host-shell" "$_host_shell" \
       "--cn-mirrors" "$_cn_mirrors" \
       "--os" "$_os_type"
-    pct exec $_ctid -- $EXEC_SHELL -c "$EXEC_SHELL -- $LXC_SETUP_FILE $*"
+    echo pct exec $_ctid -- $EXEC_SHELL -c "$EXEC_SHELL -- $LXC_SETUP_FILE $*"
   }
   retry exec_lxc_setup
 else
