@@ -106,6 +106,7 @@ _os_version=${_os_version:-debian}
 _os_type=${_os_type:-12}
 _host_shell=${_host_shell:-true}
 _cn_mirrors=${_cn_mirrors:-true}
+_template=""
 
 # Test if ID is in use
 if pct status $_ctid &>/dev/null; then
@@ -260,16 +261,13 @@ if [ "$_host_shell" = "true" ]; then
     __step_error="No LXC template found for $_os_type-$_os_version"
     pveam update &>/dev/null || return 1
     mapfile -t _templates < <(pveam available -section system | sed -n "s/.*\($_os_type-$_os_version.*\)/\1/p" | sort -t - -k 2 -V)
-    echo "_templates=${#_templates[@]}"
     [ ${#_templates[@]} -eq 0 ] && return 1
     _template="${_templates[-1]}"
-    echo "_templates=${_template}"
     return 0
   }
 
   retry get_template_name
-  [ -n "${_template+set}" ] ||
-    (rm -f "${LXC_INSTALL_STEP_FILE}" && get_template_name)
+  [ -z "${_template}" ] && rm -f "${LXC_INSTALL_STEP_FILE}" && get_template_name
 
   __step_info="Downloading LXC template..."
   __step_error="A problem occured while downloading the LXC template."
