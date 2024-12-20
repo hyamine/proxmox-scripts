@@ -391,7 +391,11 @@ EOF
   retry push_install_file
 
   function exec_lxc_setup() {
-    pct exec $_ctid -- $EXEC_SHELL -c "$EXEC_SHELL -- $LXC_SETUP_FILE --host-shell false --cn-mirrors false"
+      set -- \
+      "--host-shell" "$_host_shell" \
+      "--cn-mirrors" "$_cn_mirrors" \
+      "--os" "$_os_type"
+    pct exec $_ctid -- $EXEC_SHELL -c "$EXEC_SHELL -- $LXC_SETUP_FILE $*"
   }
   retry exec_lxc_setup
 else
@@ -401,4 +405,5 @@ else
   #_temp_dir=$(mktemp -d)
   #pushd "$_temp_dir" >/dev/null || exit
   echo "mirrors: $_cn_mirrors, host: $_host_shell"
+  echo "$*"
 fi
