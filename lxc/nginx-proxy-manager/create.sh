@@ -14,7 +14,6 @@ function error() {
   echo -e "\e[33m[Error] $*\e[39m" >&2
 }
 
-RUN_LOCAL_SCRIPT=""
 if [ -n "${BASH_SOURCE+set}" ]; then
   CURRENT_SCRIPT_NAME="$(basename "${BASH_SOURCE[0]}")"
   CURRENT_SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" &>/dev/null && pwd)
@@ -105,8 +104,6 @@ _storage_template=${_storage_template:-local}
 # Operating system
 _os_version=${_os_version:-debian}
 _os_type=${_os_type:-12}
-# System architecture
-_arch=$(dpkg --print-architecture)
 _host_shell=${_host_shell:-true}
 _cn_mirrors=${_cn_mirrors:-true}
 
@@ -204,11 +201,9 @@ function run_step() {
   return 0
 }
 
-# Create temp working directory
-_temp_dir=$(mktemp -d)
-pushd "$_temp_dir" >/dev/null || exit
-
 if [ "$_host_shell" = "true" ]; then
+  # System architecture
+  _arch="$(dpkg --print-architecture)"
   set -o pipefail
   function pct_run() {
     pct exec $_ctid -- $EXEC_SHELL -c "$@"
@@ -381,5 +376,9 @@ EOF
   retry exec_lxc_setup
 else
   ### run on lxc container
+
+  # Create temp working directory
+  #_temp_dir=$(mktemp -d)
+  #pushd "$_temp_dir" >/dev/null || exit
   echo "mirrors: $__cn_mirrors, host: $_host_shell"
 fi
