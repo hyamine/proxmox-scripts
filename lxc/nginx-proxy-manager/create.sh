@@ -2,7 +2,7 @@
 
 #set -Eeux
 set -u
-set -o pipefail
+#set -o pipefail
 
 function info {
   echo -e "\e[32m[Info] $*\e[39m"
@@ -209,7 +209,7 @@ _temp_dir=$(mktemp -d)
 pushd "$_temp_dir" >/dev/null || exit
 
 if [ "$_host_shell" = "true" ]; then
-
+  set -o pipefail
   function pct_run() {
     pct exec $_ctid -- $EXEC_SHELL -c "$@"
   }
@@ -269,11 +269,7 @@ if [ "$_host_shell" = "true" ]; then
   }
 
   retry get_template_name
-  if [ "$_template" = "" ]; then
-    (( CURRENT_INSTALL_STEP-- ))
-    rm -f "${LXC_INSTALL_STEP_FILE}"
-    retry get_template_name
-  fi
+  [ -n "${_template+set}" ] || (rm -f "${LXC_INSTALL_STEP_FILE}" && ((CURRENT_INSTALL_STEP--)) && retry get_template_name)
 
   __step_info="Downloading LXC template..."
   __step_error="A problem occured while downloading the LXC template."
