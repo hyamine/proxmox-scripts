@@ -107,6 +107,7 @@ _os_type=${_os_type:-12}
 _host_shell=${_host_shell:-true}
 _cn_mirrors=${_cn_mirrors:-true}
 _template=""
+_disk=""
 
 # Test if ID is in use
 if pct status $_ctid &>/dev/null; then
