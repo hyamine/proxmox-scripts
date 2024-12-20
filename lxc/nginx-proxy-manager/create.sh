@@ -269,6 +269,11 @@ if [ "$_host_shell" = "true" ]; then
   }
 
   retry get_template_name
+  if [ "$_template" = "" ]; then
+    (( CURRENT_INSTALL_STEP-- ))
+    rm -f "${LXC_INSTALL_STEP_FILE}"
+    retry get_template_name
+  fi
 
   __step_info="Downloading LXC template..."
   __step_error="A problem occured while downloading the LXC template."
@@ -373,9 +378,9 @@ EOF
     fi
   }
 
-retry push_install_file
+  retry push_install_file
 
-retry pct exec $_ctid -- $EXEC_SHELL "$EXEC_SHELL -- $LXC_SETUP_FILE --host-shell false --cn-mirrors false"
+  retry pct exec $_ctid -- $EXEC_SHELL "$EXEC_SHELL -- $LXC_SETUP_FILE --host-shell false --cn-mirrors false"
 else
   ### run on lxc container
   echo "mirrors: $__cn_mirrors, host: $_host_shell"
