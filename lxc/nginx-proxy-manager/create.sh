@@ -108,6 +108,7 @@ _host_shell=${_host_shell:-true}
 _cn_mirrors=${_cn_mirrors:-true}
 _template=""
 _disk=""
+_rootfs=""
 
 # Test if ID is in use
 if pct status $_ctid &>/dev/null; then
@@ -258,12 +259,14 @@ if [ "$_host_shell" = "true" ]; then
   sleep 5
 
   function get_template_name() {
-    __step_info="check LXC template name..."
-    __step_error="No LXC template found for $_os_type-$_os_version"
-    pveam update &>/dev/null || return 1
-    mapfile -t _templates < <(pveam available -section system | sed -n "s/.*\($_os_type-$_os_version.*\)/\1/p" | sort -t - -k 2 -V)
-    [ ${#_templates[@]} -eq 0 ] && return 1
-    _template="${_templates[-1]}"
+    if [ "$_template" == "" ]; then
+      __step_info="check LXC template name..."
+      __step_error="No LXC template found for $_os_type-$_os_version"
+      pveam update &>/dev/null || return 1
+      mapfile -t _templates < <(pveam available -section system | sed -n "s/.*\($_os_type-$_os_version.*\)/\1/p" | sort -t - -k 2 -V)
+      [ ${#_templates[@]} -eq 0 ] && return 1
+      _template="${_templates[-1]}"
+    fi
     return 0
   }
 
