@@ -125,8 +125,14 @@ LXC_INSTALL_STEP_FILE="${USER_HOME}/.${_os_type}__${_os_version}_INSTALL_STEP"
 if [ -f "${LXC_INSTALL_STEP_FILE}" ]; then
   let PRE_INSTALL_STEP=$(cat "${LXC_INSTALL_STEP_FILE}" | grep "INSTALL_STEP" | awk -F "=" '{print $2}')
   PRE_LXC_ID=$(cat "${LXC_INSTALL_STEP_FILE}" | grep "_ctid" | awk -F "=" '{print $2}')
-  # shellcheck source=${USER_HOME}/.${_os_type}__${_os_version}_INSTALL_STEP
-  pct status $PRE_LXC_ID >/dev/null 2>&1 && . "${LXC_INSTALL_STEP_FILE}"
+  tmp_os_type=$(cat "${LXC_INSTALL_STEP_FILE}" | grep "_os_type" | awk -F "=" '{print $2}')
+  tmp_os_version=$(cat "${LXC_INSTALL_STEP_FILE}" | grep "_os_version" | awk -F "=" '{print $2}')
+  if [ "$_os_version" = "tmp_os_version" ] && [ "$_os_type" = "$tmp_os_type" ]; then
+    # shellcheck source=${USER_HOME}/.${_os_type}__${_os_version}_INSTALL_STEP
+    #pct status $PRE_LXC_ID >/dev/null 2>&1 &&
+    . "${LXC_INSTALL_STEP_FILE}"
+  fi
+
 fi
 
 function save_step() {
