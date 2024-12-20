@@ -273,6 +273,7 @@ if [ "$_host_shell" = "true" ]; then
 
   __step_info="Downloading LXC template..."
   __step_error="A problem occured while downloading the LXC template."
+  echo retry pveam download $_storage_template $_template
   retry pveam download $_storage_template $_template
 
   # Create variables for container disk
