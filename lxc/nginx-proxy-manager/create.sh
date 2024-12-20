@@ -108,6 +108,7 @@ _cn_mirrors=${_cn_mirrors:-true}
 _template=""
 _disk=""
 _rootfs=""
+_ctid=""
 
 let PRE_INSTALL_STEP=0
 let CURRENT_INSTALL_STEP=0
@@ -206,13 +207,10 @@ function run_step() {
 }
 
 if [ "$_host_shell" = "true" ]; then
-  _ctid=${_ctid:-$(pvesh get /cluster/nextid)}
-  # Test if ID is in use
-  if pct status $_ctid &>/dev/null; then
-    warn "ID '$_ctid' is already in use."
-    unset _ctid
-    error "Cannot use ID that is already in use."
+  if [ "$_ctid" = "" ]; then
+    _ctid=${_ctid:-$(pvesh get /cluster/nextid)}
   fi
+
   # System architecture
   _arch="$(dpkg --print-architecture)"
   set -o pipefail
@@ -340,6 +338,13 @@ if [ "$_host_shell" = "true" ]; then
     "-tags" "npm" \
     "-timezone" "host"
   #)
+
+  # Test if ID is in use
+  #    if pct status $_ctid &>/dev/null; then
+  #      warn "ID '$_ctid' is already in use."
+  #      unset _ctid
+  #      error "Cannot use ID that is already in use."
+  #    fi
   __step_info="Creating LXC container..."
   __step_error="A problem occured while creating LXC container."
   run_step pct create $_ctid "$_storage_template:vztmpl/$_template" "$@"
@@ -391,7 +396,7 @@ EOF
   retry push_install_file
 
   function exec_lxc_setup() {
-      set -- \
+    set -- \
       "--host-shell" "$_host_shell" \
       "--cn-mirrors" "$_cn_mirrors" \
       "--os" "$_os_type"
