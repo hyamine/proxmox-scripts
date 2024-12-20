@@ -263,6 +263,7 @@ if [ "$_host_shell" = "true" ]; then
     echo "_templates=${#_templates[@]}"
     [ ${#_templates[@]} -eq 0 ] && return 1
     _template="${_templates[-1]}"
+    echo "_templates=${_template}"
     return 0
   }
 
