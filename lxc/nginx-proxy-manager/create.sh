@@ -160,7 +160,7 @@ __step_info=""
 __step_error=""
 
 function retry {
-  let CURRENT_INSTALL_STEP++
+  ((CURRENT_INSTALL_STEP++))
   info "retry run: $*"
   if [ $CURRENT_INSTALL_STEP -gt $PRE_INSTALL_STEP ]; then
     info "retry run step:  $CURRENT_INSTALL_STEP"
@@ -264,7 +264,8 @@ if [ "$_host_shell" = "true" ]; then
   }
 
   retry get_template_name
-  [ -n "${_template+set}" ] || (rm -f "${LXC_INSTALL_STEP_FILE}" && ((CURRENT_INSTALL_STEP--)) && retry get_template_name)
+  [ -n "${_template+set}" ] ||
+    (rm -f "${LXC_INSTALL_STEP_FILE}" && ((CURRENT_INSTALL_STEP--)) && echo "CURRENT_INSTALL_STEP=$CURRENT_INSTALL_STEP" && retry get_template_name)
 
   __step_info="Downloading LXC template..."
   __step_error="A problem occured while downloading the LXC template."
