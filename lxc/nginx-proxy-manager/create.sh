@@ -77,7 +77,7 @@ while [[ $# -gt 0 ]]; do
     shift
     ;;
   --cn-mirrors)
-    [ "$2" = "disable" ] && _cn_mirrors=false
+    [ "$2" = "false" ] && _cn_mirrors=false
     shift
     ;;
   *)
@@ -92,7 +92,6 @@ done
 _raw_base="https://g.osspub.cn/https://raw.githubusercontent.com/hyamine/proxmox-scripts/master/lxc/nginx-proxy-manager"
 
 # Check user settings or set defaults
-_ctid=${_ctid:-$(pvesh get /cluster/nextid)}
 _cpu_cores=${_cpu_cores:-1}
 _disk_size=${_disk_size:-2G}
 _host_name=${_host_name:-nginx-proxy-manager}
@@ -109,13 +108,6 @@ _cn_mirrors=${_cn_mirrors:-true}
 _template=""
 _disk=""
 _rootfs=""
-
-# Test if ID is in use
-if pct status $_ctid &>/dev/null; then
-  warn "ID '$_ctid' is already in use."
-  unset _ctid
-  error "Cannot use ID that is already in use."
-fi
 
 let PRE_INSTALL_STEP=0
 let CURRENT_INSTALL_STEP=0
@@ -214,6 +206,13 @@ function run_step() {
 }
 
 if [ "$_host_shell" = "true" ]; then
+  _ctid=${_ctid:-$(pvesh get /cluster/nextid)}
+  # Test if ID is in use
+  if pct status $_ctid &>/dev/null; then
+    warn "ID '$_ctid' is already in use."
+    unset _ctid
+    error "Cannot use ID that is already in use."
+  fi
   # System architecture
   _arch="$(dpkg --print-architecture)"
   set -o pipefail
