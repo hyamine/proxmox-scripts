@@ -260,6 +260,7 @@ if [ "$_host_shell" = "true" ]; then
     __step_error="No LXC template found for $_os_type-$_os_version"
     pveam update &>/dev/null || return 1
     mapfile -t _templates < <(pveam available -section system | sed -n "s/.*\($_os_type-$_os_version.*\)/\1/p" | sort -t - -k 2 -V)
+    echo "_templates=${#_templates[@]}"
     [ ${#_templates[@]} -eq 0 ] && return 1
     _template="${_templates[-1]}"
     return 0
