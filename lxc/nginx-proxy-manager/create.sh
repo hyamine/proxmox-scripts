@@ -363,9 +363,8 @@ EOF
   }
 
   #retry prepare_dep_${_os_type}
-
+  LXC_SETUP_FILE="/tmp/___npm_setup.sh"
   function push_install_file() {
-    LXC_SETUP_FILE="/tmp/___npm_setup.sh"
     #[ "$EXEC_SHELL" != "bash" ] && exit_with_error "Bash not found, the script needs to be run in a bash environment!"
     if [ "$(echo $CURRENT_SCRIPT_NAME | grep -o '\.sh')" = ".sh" ] && [ -f "${CURRENT_SCRIPT_DIR}/$CURRENT_SCRIPT_NAME" ]; then
       pct push $_ctid "${CURRENT_SCRIPT_DIR}/$CURRENT_SCRIPT_NAME" "$LXC_SETUP_FILE" || return $CURRENT_INSTALL_STEP
