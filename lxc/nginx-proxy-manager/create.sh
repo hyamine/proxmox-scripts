@@ -181,7 +181,7 @@ __step_error=""
 
 function retry {
   let CURRENT_INSTALL_STEP++
-  info "retry run: $@"
+  info "retry run: $*"
   if [ $CURRENT_INSTALL_STEP -gt $PRE_INSTALL_STEP ]; then
   info "retry run step:  $CURRENT_INSTALL_STEP"
   [ -n "$__step_info" ] && info "$__step_info"
@@ -212,7 +212,7 @@ function pct_run() {
 
 function run_step() {
   let CURRENT_INSTALL_STEP++
-  info "step run: $@"
+  info "step run: $*"
   if [ $CURRENT_INSTALL_STEP -gt $PRE_INSTALL_STEP ]; then
     info "step run step:  $CURRENT_INSTALL_STEP"
     [ -n "$__step_info" ] && info "$__step_info"
@@ -259,19 +259,25 @@ __step_error="A problem occured while downloading the LXC template."
 retry pveam download $_storage_template $_template
 
 # Create variables for container disk
-_storage_type=$(pvesm status -storage $_storage 2>/dev/null | awk 'NR>1 {print $2}')
-case $_storage_type in
-btrfs | dir | nfs)
-  _disk_ext=".raw"
-  _disk_ref="$_ctid/"
-  ;;
-zfspool)
-  _disk_prefix="subvol"
-  _disk_format="subvol"
-  ;;
-esac
-_disk=${_disk_prefix:-vm}-${_ctid}-disk-0${_disk_ext-}
-_rootfs=${_storage}:${_disk_ref-}${_disk}
+function prepare_disk_params() {
+    _storage_type=$(pvesm status -storage $_storage 2>/dev/null | awk 'NR>1 {print $2}')
+    case $_storage_type in
+    btrfs | dir | nfs)
+      _disk_ext=".raw"
+      _disk_ref="$_ctid/"
+      ;;
+    zfspool)
+      _disk_prefix="subvol"
+      _disk_format="subvol"
+      ;;
+    esac
+    _disk=${_disk_prefix:-vm}-${_ctid}-disk-0${_disk_ext-}
+    _rootfs=${_storage}:${_disk_ref-}${_disk}
+    echo "_disk=$_disk" >> $LXC_INSTALL_STEP_FILE
+    echo "_rootfs=$_rootfs" >> $LXC_INSTALL_STEP_FILE
+}
+
+run_step prepare_disk_params
 
 # Create LXC
 __step_info="Allocating storage for LXC container..."
@@ -315,12 +321,16 @@ return $?
 }
 run_step setup_timezone
 
-exit
+
 # Setup container
 info "Setting up LXC container..."
-pct start $_ctid
-sleep 5
-echo "rootfs=$_rootfs ; storage=$_storage ; ctid=$_ctid"
+lxc_status="$(pct status $_ctid 2>/dev/null | awk '{print $2}')"
+if [ "$lxc_status" == "" ]; then
+  exit_with_error "LXC container $_ctid not found"
+elif [ "$lxc_status" == "stopped" ]; then
+    pct start $_ctid
+    sleep 5
+fi
 
 DISTRO=$(pct exec $_ctid -- sh -c "cat /etc/*-release | grep -w ID | cut -d= -f2 | tr -d '\"'")
 EXEC_SHELL=$(pct exec $_ctid -- sh -c "[ -f /bin/bash ] && echo bash") || EXEC_SHELL="sh"
@@ -328,15 +338,18 @@ EXEC_SHELL=$(pct exec $_ctid -- sh -c "[ -f /bin/bash ] && echo bash") || EXEC_S
 
 prepare_dep_alpine() {
   pct_run "sed -i 's/dl-cdn.alpinelinux.org/mirrors.tuna.tsinghua.edu.cn/g' /etc/apk/repositories"
-  retry pct_run "apk update && apk add -U wget bash"
+  pct_run "apk update && apk add -U wget bash" || return 1
   pct_run "touch ~/.bashrc && chmod 0644 ~/.bashrc"
   EXEC_SHELL=$(pct exec $_ctid -- sh -c "[ -f /bin/bash ] && echo bash") || EXEC_SHELL="sh"
+  return 0
 }
 prepare_dep_debian() {
   echo 'prepare_dep_debian'
 }
 
-prepare_dep_${_os_type}
+retry prepare_dep_${_os_type}
+
+exit
 
 [ "$(echo $CURRENT_SCRIPT_NAME | grep -o '\.sh')" = ".sh" ] &&
   [ -f "${CURRENT_SCRIPT_DIR}/setup.sh" ] &&
