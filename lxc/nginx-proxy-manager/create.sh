@@ -305,24 +305,25 @@ if [ "$_host_shell" = "true" ]; then
   }
   run_step format_rootfs
 
-  _pct_options=(
-    "-arch" "$_arch"
-    "-cmode" "shell"
-    "-hostname" "$_host_name"
-    "-cores" "$_cpu_cores"
-    "-memory" "$_memory"
-    "-net0" "name=eth0,bridge=$_bridge,ip=dhcp"
-    "-onboot" "1"
-    "-ostype" "$_os_type"
-    "-rootfs" "$_rootfs,size=$_disk_size"
-    "-storage" "$_storage"
-    "-swap" "$_swap"
-    "-tags" "npm"
+  #_pct_options=(
+  set -- \
+    "-arch" "$_arch" \
+    "-cmode" "shell" \
+    "-hostname" "$_host_name" \
+    "-cores" "$_cpu_cores" \
+    "-memory" "$_memory" \
+    "-net0" "name=eth0,bridge=$_bridge,ip=dhcp" \
+    "-onboot" "1" \
+    "-ostype" "$_os_type" \
+    "-rootfs" "$_rootfs,size=$_disk_size" \
+    "-storage" "$_storage" \
+    "-swap" "$_swap" \
+    "-tags" "npm" \
     "-timezone" "host"
-  )
+  #)
   __step_info="Creating LXC container..."
   __step_error="A problem occured while creating LXC container."
-  run_step pct create $_ctid "$_storage_template:vztmpl/$_template" "${_pct_options[@]}"
+  run_step pct create $_ctid "$_storage_template:vztmpl/$_template" "$@"
 
   setup_timezone() {
     # Set container timezone to match host
