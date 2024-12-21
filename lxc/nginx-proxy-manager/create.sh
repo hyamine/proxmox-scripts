@@ -165,7 +165,7 @@ __step_info=""
 __step_error=""
 
 function retry {
-  ((CURRENT_INSTALL_STEP++))
+  let CURRENT_INSTALL_STEP++
   info "retry $CURRENT_INSTALL_STEP run: $*"
   if [ $CURRENT_INSTALL_STEP -gt $PRE_INSTALL_STEP ]; then
     info "retry run step:  $CURRENT_INSTALL_STEP"
