@@ -400,7 +400,7 @@ EOF
       "--host-shell" "$_host_shell" \
       "--cn-mirrors" "$_cn_mirrors" \
       "--os" "$_os_type"
-    echo pct exec $_ctid -- $EXEC_SHELL -c "$EXEC_SHELL -- $LXC_SETUP_FILE $*"
+    pct exec $_ctid -- $EXEC_SHELL -c "$EXEC_SHELL -- $LXC_SETUP_FILE $*"
   }
   retry exec_lxc_setup
 else
@@ -409,6 +409,21 @@ else
   # Create temp working directory
   #_temp_dir=$(mktemp -d)
   #pushd "$_temp_dir" >/dev/null || exit
+  check_support() {
+    [ -f /etc/os-release ] || exit_with_msg 100 "OS Not Supported"
+    #source <(cat /etc/os-release | tr -s '\n' | sed 's/ubuntu/debian/' | awk '{print "OS_"$0}')
+    source <(cat /etc/os-release | tr -s '\n' | awk '{print "OS_"$0}')
+    #CURRENT_SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" &> /dev/null && pwd)
+    if [ "$_os_type" != "$OS_ID" ]; then
+      exit_with_msg 101 "OS Not Supported"
+    fi
+    if [ -n "$(grep 'kthreadd' /proc/2/status 2>/dev/null)" ]; then
+      exit_with_msg 102 "Only Supported In Container"
+    fi
+  }
+
   echo "mirrors: $_cn_mirrors, host: $_host_shell"
   echo "$*"
+  check_support
+  echo done...
 fi
