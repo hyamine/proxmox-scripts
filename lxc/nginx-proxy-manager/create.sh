@@ -402,8 +402,8 @@ EOF
       "--os" "$_os_type"
     _cmd_line="pct exec $_ctid -- $EXEC_SHELL -c \"$EXEC_SHELL -- $LXC_SETUP_FILE $*\""
     echo "$_cmd_line"
-    $_cmd_line
-    #pct exec $_ctid -- $EXEC_SHELL -c "$EXEC_SHELL -- $LXC_SETUP_FILE $@"
+    #$_cmd_line
+    pct exec $_ctid -- $EXEC_SHELL -c "$EXEC_SHELL -- $LXC_SETUP_FILE $*"
   }
   retry exec_lxc_setup
 else
