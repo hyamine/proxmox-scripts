@@ -166,7 +166,7 @@ __step_error=""
 
 function retry {
   ((CURRENT_INSTALL_STEP++))
-  info "retry run: $*"
+  info "retry $CURRENT_INSTALL_STEP run: $*"
   if [ $CURRENT_INSTALL_STEP -gt $PRE_INSTALL_STEP ]; then
     info "retry run step:  $CURRENT_INSTALL_STEP"
     [ -n "$__step_info" ] && info "$__step_info"
@@ -193,7 +193,7 @@ function retry {
 
 function run_step() {
   let CURRENT_INSTALL_STEP++
-  info "step run: $*"
+  info "step $CURRENT_INSTALL_STEP run: $*"
   if [ $CURRENT_INSTALL_STEP -gt $PRE_INSTALL_STEP ]; then
     info "step run step:  $CURRENT_INSTALL_STEP"
     [ -n "$__step_info" ] && info "$__step_info"
