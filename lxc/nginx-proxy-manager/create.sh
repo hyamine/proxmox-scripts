@@ -397,7 +397,7 @@ EOF
 
   function exec_lxc_setup() {
     set -- \
-      "--host-shell" "$_host_shell" \
+      "--host-shell" "false" \
       "--cn-mirrors" "$_cn_mirrors" \
       "--os" "$_os_type"
     _cmd_line="pct exec $_ctid -- $EXEC_SHELL -c \"$EXEC_SHELL -- $LXC_SETUP_FILE $*\""
