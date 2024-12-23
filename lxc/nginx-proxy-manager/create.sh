@@ -243,30 +243,30 @@ if [ "$_host_shell" = "true" ]; then
 
     exit 1
   }
-
-  echo ""
-  warn "Container will be created using the following settings."
-  warn ""
-  warn "os:        $_os_type"
-  warn "osversion: $_os_version"
-  warn "ctid:      $_ctid"
-  warn "hostname:  $_host_name"
-  warn "cores:     $_cpu_cores"
-  warn "memory:    $_memory"
-  warn "swap:      $_swap"
-  warn "disksize:  $_disk_size"
-  warn "bridge:    $_bridge"
-  warn "storage:   $_storage"
-  warn "templates: $_storage_template"
-  warn "template:  $_template"
-  warn "disk:      $_disk"
-  warn "rootfs:    $_rootfs"
-  warn ""
-  warn "If you want to abort, hit ctrl+c within 5 seconds..."
-  echo ""
-
-  sleep 5
-
+  function echo_config() {
+    echo ""
+    warn "Container will be created using the following settings."
+    warn ""
+    warn "os:        $_os_type"
+    warn "osversion: $_os_version"
+    warn "ctid:      $_ctid"
+    warn "hostname:  $_host_name"
+    warn "cores:     $_cpu_cores"
+    warn "memory:    $_memory"
+    warn "swap:      $_swap"
+    warn "disksize:  $_disk_size"
+    warn "bridge:    $_bridge"
+    warn "storage:   $_storage"
+    warn "templates: $_storage_template"
+    warn "template:  $_template"
+    warn "disk:      $_disk"
+    warn "rootfs:    $_rootfs"
+    warn ""
+    warn "If you want to abort, hit ctrl+c within 5 seconds..."
+    echo ""
+    sleep 5
+  }
+  $_host_shell && echo_config
   function get_template_name() {
     if [ "$_template" == "" ]; then
       __step_info="check LXC template name..."
