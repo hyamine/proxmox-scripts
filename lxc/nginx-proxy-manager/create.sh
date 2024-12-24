@@ -4,10 +4,10 @@
 set -u
 #set -o pipefail
 
-function info {
+function info() {
   echo -e "\e[32m[Info] $*\e[39m"
 }
-function warn {
+function warn() {
   echo -e "\e[33m[Warn] $*\e[39m"
 }
 function error() {
@@ -488,23 +488,23 @@ else
 
   # Check for previous install
   pre_install() {
-    log "Updating container OS"
+    info "Updating container OS"
     echo "fs.file-max = 65535" >/etc/sysctl.conf
     #sed -i 's|root:/root:/bin/ash|root:/root:/bin/bash|' /etc/passwd
     [ -f "${_shell_profile}" ] || touch "${_shell_profile}" && chmod 0644 "${_shell_profile}"
     if [ "${_os_type}" = "alpine" ] && [ -f /etc/init.d/npm ]; then
-      log "Stopping services"
+      info "Stopping services"
       rc-service npm stop >/dev/null
       rc-service openresty stop >/dev/null
       echo ". ${_shell_profile}" >>/etc/profile
     elif [ "${_os_type}" = "debian" ] && [ -f /lib/systemd/system/npm.service ]; then
-      log "Stopping services"
+      info "Stopping services"
       systemctl stop openresty
       systemctl stop npm
     fi
     sleep 2
     # Cleanup for new install
-    log "Cleaning old files"
+    info "Cleaning old files"
     rm -rf /app \
       /var/www/html \
       /etc/nginx \
@@ -513,7 +513,7 @@ else
       /var/cache/nginx >/dev/null 2>&1
   }
   install_alpine_depend() {
-    log "Installing dependencies"
+    info "Installing dependencies"
     # Install dependancies
     DEVDEPS="npm g++ make gcc libgcc linux-headers git musl-dev libffi-dev openssl openssl-dev jq binutils findutils wget"
     echo id -u npm
@@ -524,7 +524,7 @@ else
   }
   install_debian_depend() {
     # Install dependencies
-    log "Installing dependencies"
+    info "Installing dependencies"
     DEVDEPS="git build-essential libffi-dev libssl-dev python3-dev wget"
     apt upgrade -y
     #apt install  gnupg -y
@@ -537,7 +537,7 @@ else
     $_cn_mirrors && pip3 config set install.trusted-host pypi.tuna.tsinghua.edu.cn
     pip3 config list
     # Setup python env and PIP
-    log "Setting up python"
+    info "Setting up python"
     python3 -m venv /opt/certbot/
     grep -qo "/opt/certbot" "${_shell_profile}" || echo "source /opt/certbot/bin/activate" >>"${_shell_profile}"
     source /opt/certbot/bin/activate
@@ -550,7 +550,7 @@ else
   }
   install_debian_python3() {
     # Install Python
-    log "Installing python"
+    info "Installing python"
     #apt install -y -q --no-install-recommends python3 python3-distutils python3-venv python3-pip
     apt install -y -q --no-install-recommends python3 python3-setuptools python3-venv python3-pip
     $_cn_mirrors && pip3 config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple/
@@ -565,7 +565,7 @@ else
   }
   install_nvm_nodejs() {
     # Install nodejs
-    log "Installing nodejs"
+    info "Installing nodejs"
     _API_INFO="$(wget -qO - 'https://g.osspub.cn/repos/nvm-sh/nvm/releases/latest' || wget -qO - 'https://api.upup.cool/repo/nvm-sh/nvm/info')"
     _latest_version=$(echo $_API_INFO | jq -r 'if .version then .version else .tag_name end')
     # shellcheck disable=SC1101
@@ -597,7 +597,7 @@ else
     fi
   }
   install_openresty() {
-    log "install openresty..."
+    info "install openresty..."
     sed -i '1s/^/nameserver 8.8.8.8\n/' /etc/resolv.conf
     CPU_CORE_COUNT=$([ -e '/proc/cpuinfo' ] && \
     grep processor /proc/cpuinfo | wc -l || \
