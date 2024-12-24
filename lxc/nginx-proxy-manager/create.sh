@@ -484,9 +484,6 @@ else
   function replace_alpine_pkg_source() {
     sed -i 's/dl-cdn.alpinelinux.org/mirrors.tuna.tsinghua.edu.cn/g' /etc/apk/repositories
     apk update
-    #apk update && apk add -U wget bash || return $CURRENT_INSTALL_STEP
-    #pct_run "touch ~/.bashrc && chmod 0644 ~/.bashrc"
-    #EXEC_SHELL=$(pct exec $_ctid -- sh -c "[ -f /bin/bash ] && echo bash") || EXEC_SHELL="sh"
   }
 
   # Check for previous install
@@ -576,7 +573,7 @@ else
       sed 's|raw.githubusercontent.com/${NVM_GITHUB_REPO}/${NVM_VERSION}|fastly.jsdelivr.net/gh/${NVM_GITHUB_REPO}@${NVM_VERSION}|g' |
       sed 's|NVM_SOURCE_URL="https://github.com|NVM_SOURCE_URL="https://g.osspub.cn/https://github.com|g' >$TEMPDIR/nvm_install.sh
 
-    bash $TEMPDIR/nvm_install.sh
+    $EXEC_SHELL $TEMPDIR/nvm_install.sh
     # shellcheck source=${_shell_profile}
     . "${_shell_profile}"
     [ -f /etc/alpine-release ] && mv /etc/alpine-release /etc/alpine-release.bak
@@ -598,6 +595,28 @@ else
       yarn config set operadriver_cdnurl https://cdn.npmmirror.com/dist/operadriver -g
       yarn config set fse_binary_host_mirror https://npmmirror.com/mirrors/fsevents -g
     fi
+  }
+  install_openresty() {
+    log "install openresty..."
+    sed -i '1s/^/nameserver 8.8.8.8\n/' /etc/resolv.conf
+    CPU_CORE_COUNT=$([ -e '/proc/cpuinfo' ] && \
+    grep processor /proc/cpuinfo | wc -l || \
+    sysctl -n machdep.cpu.core_count)
+    cd $TEMPDIR
+    git clone https://g.osspub.cn/https://github.com/openresty/docker-openresty.git
+    cd docker-openresty
+    echo "#!/usr/bin/env $EXEC_SHELL" > ./build_openresty.sh
+    echo "CURRENT_DIR_PATH=$(pwd)" >> ./build_openresty.sh
+    echo "CPU_CORE_COUNT=$CPU_CORE_COUNT" >> ./build_openresty.sh
+    _tmp_env_replace="s|^ENV \(.*\)$|echo '\1' > $_shell_profile|g"
+    cat alpine/Dockerfile | sed 's/^\(ARG \|LABEL \|RUN \)//g' | sed '/^\(CMD \|STOPSIGNAL \|FROM \|#\).*/d' | \
+    sed 's|https://raw.githubusercontent.com/|https://g.osspub.cn/https://raw.githubusercontent.com/|g' | \
+    sed 's|https://github.com/|https://g.osspub.cn/https://github.com/|g' | \
+    sed "$_tmp_env_replace" | sed '/^COPY nginx.*/d' | sed '/^$/d' | \
+    sed 's|^RESTY_J=.*|RESTY_J=\$CPU_CORE_COUNT|' \
+    >> ./build_openresty.sh
+    chmod u+x ./build_openresty.sh
+    $EXEC_SHELL ./build_openresty.sh
   }
 
   info "Installing services in container:"
