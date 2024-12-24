@@ -523,7 +523,7 @@ else
     id -u npm >/dev/null 2>&1 || adduser npm --shell=/bin/false --no-create-home -D
     apk upgrade
     apk add apache2-utils logrotate $DEVDEPS
-    apk add -U curl bash ca-certificates ncurses coreutils grep util-linux gcompat
+    apk add -U ca-certificates ncurses coreutils grep util-linux gcompat
   }
   install_debian_depend() {
     # Install dependencies
@@ -542,7 +542,7 @@ else
     # Setup python env and PIP
     log "Setting up python"
     python3 -m venv /opt/certbot/
-    grep -qo "/opt/certbot" "${_shell_profile}" || echo "source /opt/certbot/bin/activate" >> "${_shell_profile}"
+    grep -qo "/opt/certbot" "${_shell_profile}" || echo "source /opt/certbot/bin/activate" >>"${_shell_profile}"
     source /opt/certbot/bin/activate
     ln -sf /opt/certbot/bin/activate /etc/profile.d/pyenv_activate.sh
     # Install certbot and python dependancies
@@ -562,7 +562,7 @@ else
     python3 -m venv /opt/certbot/
     #export PATH=/opt/certbot/bin:$PATH
     source /opt/certbot/bin/activate
-    grep -qo "/opt/certbot" "${_shell_profile}" || echo "source /opt/certbot/bin/activate" >> "${_shell_profile}"
+    grep -qo "/opt/certbot" "${_shell_profile}" || echo "source /opt/certbot/bin/activate" >>"${_shell_profile}"
     ln -sf /opt/certbot/bin/activate /etc/profile.d/pyenv_activate.sh
     pip3 install --upgrade pip
   }
@@ -588,15 +588,16 @@ else
     ln -sf "$(command -v node)" /usr/bin/node
     ln -sf "$(command -v yarn)" /usr/bin/yarn
     ln -sf "$(command -v npm)" /usr/bin/npm
-
-    yarn config set registry https://registry.npmmirror.com -g
-    yarn config set disturl https://npmmirror.com/dist -g
-    yarn config set electron_mirror https://npmmirror.com/mirrors/electron/ -g
-    yarn config set sass_binary_site https://npmmirror.com/mirrors/node-sass/ -g
-    yarn config set phantomjs_cdnurl https://npmmirror.com/mirrors/phantomjs/ -g
-    yarn config set chromedriver_cdnurl https://cdn.npmmirror.com/dist/chromedriver -g
-    yarn config set operadriver_cdnurl https://cdn.npmmirror.com/dist/operadriver -g
-    yarn config set fse_binary_host_mirror https://npmmirror.com/mirrors/fsevents -g
+    if [ "$_cn_mirrors" = "true" ]; then
+      yarn config set registry https://registry.npmmirror.com -g
+      yarn config set disturl https://npmmirror.com/dist -g
+      yarn config set electron_mirror https://npmmirror.com/mirrors/electron/ -g
+      yarn config set sass_binary_site https://npmmirror.com/mirrors/node-sass/ -g
+      yarn config set phantomjs_cdnurl https://npmmirror.com/mirrors/phantomjs/ -g
+      yarn config set chromedriver_cdnurl https://cdn.npmmirror.com/dist/chromedriver -g
+      yarn config set operadriver_cdnurl https://cdn.npmmirror.com/dist/operadriver -g
+      yarn config set fse_binary_host_mirror https://npmmirror.com/mirrors/fsevents -g
+    fi
   }
 
   info "Installing services in container:"
@@ -608,5 +609,5 @@ else
   run_step pre_install
   run_step install_${_os_type}_depend
   run_step install_${_os_type}_python3
-
+  run_step install_nvm_nodejs
 fi
