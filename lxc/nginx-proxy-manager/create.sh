@@ -215,7 +215,7 @@ if [ "$_host_shell" = "true" ]; then
   _arch="$(dpkg --print-architecture)"
   set -o pipefail
   function pct_run() {
-    pct exec $_ctid -- $EXEC_SHELL -c "$@"
+    pct exec $_ctid -- $EXEC_SHELL -c "$*"
   }
 
   #trap _error ERR
@@ -349,7 +349,7 @@ if [ "$_host_shell" = "true" ]; then
   __step_error="A problem occured while creating LXC container."
   run_step pct create $_ctid "$_storage_template:vztmpl/$_template" "$@"
 
-  setup_timezone() {
+  function setup_timezone() {
     # Set container timezone to match host
     cat <<'EOF' >>/etc/pve/lxc/${_ctid}.conf
 lxc.hook.mount: sh -c 'ln -fs $(readlink /etc/localtime) ${LXC_ROOTFS_MOUNT}/etc/localtime'
@@ -371,15 +371,31 @@ EOF
   DISTRO=$(pct exec $_ctid -- sh -c "cat /etc/*-release | grep -w ID | cut -d= -f2 | tr -d '\"'")
   EXEC_SHELL=$(pct exec $_ctid -- sh -c "[ -f /bin/bash ] && echo bash") || EXEC_SHELL="sh"
 
-  prepare_dep_alpine() {
+  function prepare_dep_alpine() {
     $_cn_mirrors && pct_run "sed -i 's/dl-cdn.alpinelinux.org/mirrors.tuna.tsinghua.edu.cn/g' /etc/apk/repositories"
-    pct_run "apk update && apk add -U wget bash" || return 1
-    pct_run "touch ~/.bashrc && chmod 0644 ~/.bashrc"
-    EXEC_SHELL=$(pct exec $_ctid -- sh -c "[ -f /bin/bash ] && echo bash") || EXEC_SHELL="sh"
+    pct_run "apk update && apk add -U wget bash" || return $CURRENT_INSTALL_STEP
+    #pct_run "touch ~/.bashrc && chmod 0644 ~/.bashrc"
+    #EXEC_SHELL=$(pct exec $_ctid -- sh -c "[ -f /bin/bash ] && echo bash") || EXEC_SHELL="sh"
     return 0
   }
-  prepare_dep_debian() {
-    echo 'prepare_dep_debian'
+  function prepare_dep_debian() {
+    if [ "$_cn_mirrors" = "true" ]; then
+      _no_trusted="$(pct_run [ -f '/etc/apt/sources.list.d/debian.sources' ] && echo true)"
+      if [ "$_no_trusted" = "false" ]; then
+        pct_run 'apt update && apt install -y apt-transport-https ca-certificates'
+        pct_run 'sed -i "s/deb.debian.org/mirrors.ustc.edu.cn/g" /etc/apt/sources.list.d/debian.sources'
+        pct_run 'sed -i "s|security.debian.org|mirrors.ustc.edu.cn/debian-security|g" /etc/apt/sources.list.d/debian.sources'
+        pct_run 'sed -i "s/http:/https:/g" /etc/apt/sources.list.d/debian.sources'
+      else
+        pct_run 'sed -i "s|deb https\?://deb.debian.org|deb [trusted=yes] https://mirrors.ustc.edu.cn|g" /etc/apt/sources.list'
+        pct_run 'sed -i "s|deb https\?://security.debian.org|deb [trusted=yes] https://mirrors.ustc.edu.cn/debian-security|g" /etc/apt/sources.list'
+        #sed -i 's/http:/https:/g' /etc/apt/sources.list
+        #sed -i 's/security.debian.org/mirrors.cloud.tencent.com/g' /etc/apt/sources.list
+        pct_run 'apt update && apt install -y apt-transport-https ca-certificates'
+      fi
+    fi
+    pct_run 'apt update && apt install -y wget' || return $CURRENT_INSTALL_STEP
+    return 0
   }
 
   #retry prepare_dep_${_os_type}
@@ -389,7 +405,9 @@ EOF
     if [ "$(echo $CURRENT_SCRIPT_NAME | grep -o '\.sh')" = ".sh" ] && [ -f "${CURRENT_SCRIPT_DIR}/$CURRENT_SCRIPT_NAME" ]; then
       pct push $_ctid "${CURRENT_SCRIPT_DIR}/$CURRENT_SCRIPT_NAME" "$LXC_SETUP_FILE" || return $CURRENT_INSTALL_STEP
     else
-      pct exec $_ctid -- $EXEC_SHELL -c "wget --no-cache -qO $LXC_SETUP_FILE $_raw_base/create.sh" || return $CURRENT_INSTALL_STEP
+      #pct exec $_ctid -- $EXEC_SHELL -c "wget --no-cache -qO $LXC_SETUP_FILE $_raw_base/create.sh" || return $CURRENT_INSTALL_STEP
+      wget --no-cache -qO "$LXC_SETUP_FILE" || return $CURRENT_INSTALL_STEP
+      pct push $_ctid "$LXC_SETUP_FILE" "$LXC_SETUP_FILE" || return $CURRENT_INSTALL_STEP
     fi
   }
 
@@ -412,7 +430,16 @@ else
   # Create temp working directory
   #_temp_dir=$(mktemp -d)
   #pushd "$_temp_dir" >/dev/null || exit
-  check_support() {
+  WGETOPT="-t 1 -T 15 -q"
+  TEMPDIR=""
+  NPMURL="https://github.com/NginxProxyManager/nginx-proxy-manager"
+  echo $PATH | grep /usr/local/bin >/dev/null 2>&1 || export PATH=$PATH:/usr/local/bin
+  export DEBIAN_FRONTEND=noninteractive
+  _shell_profile=".profile"
+  EXEC_SHELL=$([ -f /bin/bash ] && echo bash) || EXEC_SHELL="sh"
+  [ "$EXEC_SHELL" = "bash" ] && _shell_profile=".bashrc"
+
+  function check_support() {
     [ -f /etc/os-release ] || exit_with_msg 100 "OS Not Supported"
     #source <(cat /etc/os-release | tr -s '\n' | sed 's/ubuntu/debian/' | awk '{print "OS_"$0}')
     source <(cat /etc/os-release | tr -s '\n' | awk '{print "OS_"$0}')
@@ -424,9 +451,129 @@ else
       exit_with_msg 102 "Only Supported In Container"
     fi
   }
+  function prepare_temp_dir() {
+    TEMPDIR=$(mktemp -d)
+    TEMPLOG="$TEMPDIR/tmplog"
+    TEMPERR="$TEMPDIR/tmperr"
+    mkdir -p $TEMPDIR/install && touch "$TEMPLOG"
+  }
 
+  function replace_debian_pkg_source() {
+    if [ -f "/etc/apt/sources.list.d/debian.sources" ]; then
+      apt update
+      apt install -y apt-transport-https ca-certificates
+      sed -i 's/deb.debian.org/mirrors.ustc.edu.cn/g' /etc/apt/sources.list.d/debian.sources
+      sed -i 's|security.debian.org|mirrors.ustc.edu.cn/debian-security|g' /etc/apt/sources.list.d/debian.sources
+      sed -i 's/http:/https:/g' /etc/apt/sources.list.d/debian.sources
+      apt update
+    else
+      sed -i 's|deb https\?://deb.debian.org|deb [trusted=yes] https://mirrors.ustc.edu.cn|g' /etc/apt/sources.list
+      sed -i 's|deb https\?://security.debian.org|deb [trusted=yes] https://mirrors.ustc.edu.cn/debian-security|g' /etc/apt/sources.list
+      #sed -i 's/http:/https:/g' /etc/apt/sources.list
+      #sed -i 's/security.debian.org/mirrors.cloud.tencent.com/g' /etc/apt/sources.list
+      apt update
+    fi
+  }
+
+  function log() {
+    logs=$(cat $TEMPLOG | sed -e "s/34/32/g" | sed -e "s/info/success/g")
+    #clear && printf "\033c\e[3J$logs\n\e[34m[info] $*\e[0m\n" | tee $TEMPLOG;
+    printf "\033c\e[3J$logs\n\e[34m[info] $*\e[0m\n" | tee $TEMPLOG
+  }
+
+  function replace_alpine_pkg_source() {
+    sed -i 's/dl-cdn.alpinelinux.org/mirrors.tuna.tsinghua.edu.cn/g' /etc/apk/repositories
+    apk update
+    #apk update && apk add -U wget bash || return $CURRENT_INSTALL_STEP
+    #pct_run "touch ~/.bashrc && chmod 0644 ~/.bashrc"
+    #EXEC_SHELL=$(pct exec $_ctid -- sh -c "[ -f /bin/bash ] && echo bash") || EXEC_SHELL="sh"
+  }
+
+  # Check for previous install
+  pre_install() {
+    log "Updating container OS"
+    echo "fs.file-max = 65535" >/etc/sysctl.conf
+    #sed -i 's|root:/root:/bin/ash|root:/root:/bin/bash|' /etc/passwd
+    [ -f "${HOME}/${_shell_profile}" ] || touch "${HOME}/${_shell_profile}" && chmod 0644 "${HOME}/${_shell_profile}"
+    if [ "${_os_type}" = "alpine" ] && [ -f /etc/init.d/npm ]; then
+      log "Stopping services"
+      rc-service npm stop >/dev/null
+      rc-service openresty stop >/dev/null
+      echo "${HOME}/${_shell_profile}" >> /etc/profile
+    elif [ "${_os_type}" = "debian" ] && [ -f /lib/systemd/system/npm.service ]; then
+      log "Stopping services"
+      systemctl stop openresty
+      systemctl stop npm
+    fi
+    sleep 2
+    # Cleanup for new install
+    log "Cleaning old files"
+    rm -rf /app \
+      /var/www/html \
+      /etc/nginx \
+      /var/log/nginx \
+      /var/lib/nginx \
+      /var/cache/nginx >/dev/null 2>&1
+  }
+  install_alpine_depend() {
+    log "Installing dependencies"
+    # Install dependancies
+    DEVDEPS="npm g++ make gcc libgcc linux-headers git musl-dev libffi-dev openssl openssl-dev jq binutils findutils wget"
+    echo id -u npm
+    id -u npm >/dev/null 2>&1 || adduser npm --shell=/bin/false --no-create-home -D
+    apk upgrade
+    apk add apache2-utils logrotate $DEVDEPS
+    apk add -U curl bash ca-certificates ncurses coreutils grep util-linux gcompat
+  }
+  install_debian_depend() {
+    # Install dependencies
+    log "Installing dependencies"
+    DEVDEPS="git build-essential libffi-dev libssl-dev python3-dev wget"
+    apt upgrade -y
+    #apt install  gnupg -y
+    apt install -y --no-install-recommends $DEVDEPS gnupg openssl ca-certificates apache2-utils logrotate jq
+  }
+  install_alpine_python3() {
+    apk add python3 py3-pip python3-dev
+    #python3 -m ensurepip --upgrade
+    pip3 config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple/
+    pip3 config set install.trusted-host pypi.tuna.tsinghua.edu.cn
+    pip3 config list
+    # Setup python env and PIP
+    log "Setting up python"
+    python3 -m venv /opt/certbot/
+    grep -qo "/opt/certbot" ~/.bashrc || echo "source /opt/certbot/bin/activate" >>~/.bashrc
+    source /opt/certbot/bin/activate
+    ln -sf /opt/certbot/bin/activate /etc/profile.d/pyenv_activate.sh
+    # Install certbot and python dependancies
+    #pip3 install --no-cache-dir -U cryptography==3.3.2
+    #pip3 install --no-cache-dir -U cryptography
+    pip3 install --upgrade pip
+    pip3 install --no-cache-dir cffi certbot
+  }
+  install_debian_python3() {
+    # Install Python
+    log "Installing python"
+    #apt install -y -q --no-install-recommends python3 python3-distutils python3-venv python3-pip
+    apt install -y -q --no-install-recommends python3 python3-setuptools python3-venv python3-pip
+    pip3 config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple/
+    pip3 config set install.trusted-host pypi.tuna.tsinghua.edu.cn
+    pip3 config list
+    python3 -m venv /opt/certbot/
+    #export PATH=/opt/certbot/bin:$PATH
+    source /opt/certbot/bin/activate
+    grep -qo "/opt/certbot" ~/.bashrc || echo "source /opt/certbot/bin/activate" >>~/.bashrc
+    ln -sf /opt/certbot/bin/activate /etc/profile.d/pyenv_activate.sh
+    pip3 install --upgrade pip
+  }
+
+  info "Installing services in container:"
   echo "mirrors: $_cn_mirrors, host: $_host_shell"
   echo "$*"
   check_support
-  echo done...
+  $_cn_mirrors && run_step replace_${_os_type}_pkg_source
+  run_step pre_install
+  run_step install_${_os_type}_depend
+  run_step install_${_os_type}_python3
+
 fi
