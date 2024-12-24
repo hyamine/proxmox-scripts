@@ -435,9 +435,9 @@ else
   NPMURL="https://github.com/NginxProxyManager/nginx-proxy-manager"
   echo $PATH | grep /usr/local/bin >/dev/null 2>&1 || export PATH=$PATH:/usr/local/bin
   export DEBIAN_FRONTEND=noninteractive
-  _shell_profile=".profile"
+  _shell_profile="${HOME}/.profile"
   EXEC_SHELL=$([ -f /bin/bash ] && echo bash) || EXEC_SHELL="sh"
-  [ "$EXEC_SHELL" = "bash" ] && _shell_profile=".bashrc"
+  [ "$EXEC_SHELL" = "bash" ] && _shell_profile="${HOME}/.bashrc"
 
   function check_support() {
     [ -f /etc/os-release ] || exit_with_msg 100 "OS Not Supported"
@@ -494,12 +494,12 @@ else
     log "Updating container OS"
     echo "fs.file-max = 65535" >/etc/sysctl.conf
     #sed -i 's|root:/root:/bin/ash|root:/root:/bin/bash|' /etc/passwd
-    [ -f "${HOME}/${_shell_profile}" ] || touch "${HOME}/${_shell_profile}" && chmod 0644 "${HOME}/${_shell_profile}"
+    [ -f "${_shell_profile}" ] || touch "${_shell_profile}" && chmod 0644 "${_shell_profile}"
     if [ "${_os_type}" = "alpine" ] && [ -f /etc/init.d/npm ]; then
       log "Stopping services"
       rc-service npm stop >/dev/null
       rc-service openresty stop >/dev/null
-      echo "${HOME}/${_shell_profile}" >> /etc/profile
+      echo ". ${_shell_profile}" >>/etc/profile
     elif [ "${_os_type}" = "debian" ] && [ -f /lib/systemd/system/npm.service ]; then
       log "Stopping services"
       systemctl stop openresty
@@ -542,7 +542,7 @@ else
     # Setup python env and PIP
     log "Setting up python"
     python3 -m venv /opt/certbot/
-    grep -qo "/opt/certbot" ~/.bashrc || echo "source /opt/certbot/bin/activate" >>~/.bashrc
+    grep -qo "/opt/certbot" "${_shell_profile}" || echo "source /opt/certbot/bin/activate" >> "${_shell_profile}"
     source /opt/certbot/bin/activate
     ln -sf /opt/certbot/bin/activate /etc/profile.d/pyenv_activate.sh
     # Install certbot and python dependancies
@@ -562,14 +562,47 @@ else
     python3 -m venv /opt/certbot/
     #export PATH=/opt/certbot/bin:$PATH
     source /opt/certbot/bin/activate
-    grep -qo "/opt/certbot" ~/.bashrc || echo "source /opt/certbot/bin/activate" >>~/.bashrc
+    grep -qo "/opt/certbot" "${_shell_profile}" || echo "source /opt/certbot/bin/activate" >> "${_shell_profile}"
     ln -sf /opt/certbot/bin/activate /etc/profile.d/pyenv_activate.sh
     pip3 install --upgrade pip
+  }
+  install_nvm_nodejs() {
+    # Install nodejs
+    log "Installing nodejs"
+    _API_INFO="$(wget -qO - 'https://g.osspub.cn/repos/nvm-sh/nvm/releases/latest' || wget -qO - 'https://api.upup.cool/repo/nvm-sh/nvm/info')"
+    _latest_version=$(echo $_API_INFO | jq -r 'if .version then .version else .tag_name end')
+    # shellcheck disable=SC1101
+    wget -qO- https://fastly.jsdelivr.net/gh/nvm-sh/nvm@${_latest_version}/install.sh |
+      sed 's|raw.githubusercontent.com/${NVM_GITHUB_REPO}/${NVM_VERSION}|fastly.jsdelivr.net/gh/${NVM_GITHUB_REPO}@${NVM_VERSION}|g' |
+      sed 's|NVM_SOURCE_URL="https://github.com|NVM_SOURCE_URL="https://g.osspub.cn/https://github.com|g' >$TEMPDIR/nvm_install.sh
+
+    bash $TEMPDIR/nvm_install.sh
+    # shellcheck source=${_shell_profile}
+    . "${_shell_profile}"
+    [ -f /etc/alpine-release ] && mv /etc/alpine-release /etc/alpine-release.bak
+    nvm install 16
+    [ -f /etc/alpine-release.bak ] && mv /etc/alpine-release.bak /etc/alpine-release
+    npm config set registry https://registry.npmmirror.com
+    npm install --force --global yarn
+
+    ln -sf "$(command -v node)" /usr/bin/node
+    ln -sf "$(command -v yarn)" /usr/bin/yarn
+    ln -sf "$(command -v npm)" /usr/bin/npm
+
+    yarn config set registry https://registry.npmmirror.com -g
+    yarn config set disturl https://npmmirror.com/dist -g
+    yarn config set electron_mirror https://npmmirror.com/mirrors/electron/ -g
+    yarn config set sass_binary_site https://npmmirror.com/mirrors/node-sass/ -g
+    yarn config set phantomjs_cdnurl https://npmmirror.com/mirrors/phantomjs/ -g
+    yarn config set chromedriver_cdnurl https://cdn.npmmirror.com/dist/chromedriver -g
+    yarn config set operadriver_cdnurl https://cdn.npmmirror.com/dist/operadriver -g
+    yarn config set fse_binary_host_mirror https://npmmirror.com/mirrors/fsevents -g
   }
 
   info "Installing services in container:"
   echo "mirrors: $_cn_mirrors, host: $_host_shell"
   echo "$*"
+  run_step prepare_temp_dir
   check_support
   $_cn_mirrors && run_step replace_${_os_type}_pkg_source
   run_step pre_install
