@@ -536,8 +536,8 @@ else
   install_alpine_python3() {
     apk add python3 py3-pip python3-dev
     #python3 -m ensurepip --upgrade
-    pip3 config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple/
-    pip3 config set install.trusted-host pypi.tuna.tsinghua.edu.cn
+    $_cn_mirrors && pip3 config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple/
+    $_cn_mirrors && pip3 config set install.trusted-host pypi.tuna.tsinghua.edu.cn
     pip3 config list
     # Setup python env and PIP
     log "Setting up python"
@@ -556,8 +556,8 @@ else
     log "Installing python"
     #apt install -y -q --no-install-recommends python3 python3-distutils python3-venv python3-pip
     apt install -y -q --no-install-recommends python3 python3-setuptools python3-venv python3-pip
-    pip3 config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple/
-    pip3 config set install.trusted-host pypi.tuna.tsinghua.edu.cn
+    $_cn_mirrors && pip3 config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple/
+    $_cn_mirrors && pip3 config set install.trusted-host pypi.tuna.tsinghua.edu.cn
     pip3 config list
     python3 -m venv /opt/certbot/
     #export PATH=/opt/certbot/bin:$PATH
