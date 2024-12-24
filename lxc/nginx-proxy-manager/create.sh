@@ -602,9 +602,9 @@ else
     CPU_CORE_COUNT=$([ -e '/proc/cpuinfo' ] && \
     grep processor /proc/cpuinfo | wc -l || \
     sysctl -n machdep.cpu.core_count)
-    cd $TEMPDIR
+    cd "$TEMPDIR" || return $CURRENT_INSTALL_STEP
     git clone https://g.osspub.cn/https://github.com/openresty/docker-openresty.git
-    cd docker-openresty
+    cd "docker-openresty" || return $CURRENT_INSTALL_STEP
     echo "#!/usr/bin/env $EXEC_SHELL" > ./build_openresty.sh
     echo "CURRENT_DIR_PATH=$(pwd)" >> ./build_openresty.sh
     echo "CPU_CORE_COUNT=$CPU_CORE_COUNT" >> ./build_openresty.sh
@@ -629,4 +629,5 @@ else
   run_step install_${_os_type}_depend
   run_step install_${_os_type}_python3
   run_step install_nvm_nodejs
+  run_step install_openresty
 fi
